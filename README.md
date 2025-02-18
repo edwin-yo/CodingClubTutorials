@@ -3,3 +3,7 @@ This repository contains documentation about tutorials that I have been followin
 
 + Name: Edwin Yánez
 + LinkedIn: [edwin-yanez](https://www.linkedin.com/in/edwin-yanez-orquera/)
+
+Planned content:
++ Compmlete the tutorials.
++ Set up a personal website.
