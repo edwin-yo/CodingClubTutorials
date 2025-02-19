@@ -57,3 +57,39 @@ summary(sheep.m1)
 # Introducing sex as a predictor variable.
 sheep.m2 <- lm(weanwt ~ weanage*sex, data = sheep)
 summary(sheep.m2)
+
+# Visualizing the relationship
+sheep.p <- ggplot(data = sheep, mapping = aes(x = weanage , y = weanwt))+
+  geom_point(aes(colour = sex))+
+  labs(
+    x = 'Age at weaning [days]',
+    y = 'Wean weight [kg]'
+  )+
+  stat_smooth(method = 'lm', aes(fill = sex, colour = sex))+
+  scale_colour_manual(values = c('#FFC125', '#36648B'))+
+  scale_fill_manual(values = c('#FFC125', '#36648B'))+
+  theme.clean()
+sheep.p
+
+# Checking that the residuals are normally distributed.
+apples.resid <- resid(apples.m)   # Extracting the residuals.
+shapiro.test(apples.resid)   # Using the Shapiro-Wilk test.
+# The null hypothesis of normal distribution is accepted: there is no significant difference (p > 0.05) from a normal distribution.
+
+# Checking for homoscedasticity.
+bartlett.test(apples$yield, apples$spacing2)
+bartlett.test(yield ~ spacing2, data = apples) # Note that these two ways of writing the code give the same results.
+# The null hypothesis of homoscedasticity is accepted.
+
+# Examination of the model through a plot.
+while (FALSE) {
+plot(apples.m) #   Need to hit Enter 4 times. It will produce 4 plots.
+}
+# Produced plots:
+# 1. Residuals versus fitted values.
+# 2. a Q-Q plot of standardized residuals.
+# 3. a scale-location plot (square roots of standardized residuals versus fitted values).
+# 4. a plot of residuals versus leverage that adds bands corresponding to Cook's distances of 0.5 to 1.
+
+# Practicing generalised linear models ----
+
