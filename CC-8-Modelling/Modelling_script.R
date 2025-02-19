@@ -5,7 +5,7 @@
 #                                                          #
 ############################################################
 
-sxcd
+
 # This is a sample script outlining the different tasks for this tutorial
 # Edit this script to add in your own code
 
