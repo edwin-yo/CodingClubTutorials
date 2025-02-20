@@ -91,5 +91,111 @@ plot(apples.m) #   Need to hit Enter 4 times. It will produce 4 plots.
 # 3. a scale-location plot (square roots of standardized residuals versus fitted values).
 # 4. a plot of residuals versus leverage that adds bands corresponding to Cook's distances of 0.5 to 1.
 
-# Practicing generalised linear models ----
+# Practicing generalised linear models
+# Poisson distribution ----
+shag <- read.csv('shagLPI.csv', header = TRUE)
 
+# Making a histogram to assess data distribution
+shag.hist <- ggplot(shag, aes(pop))+
+  geom_histogram()+
+  theme.clean()
+shag.hist
+
+# Try a poisson distribution
+shag.m <- glm(pop ~ year, family = poisson, data = shag)
+summary(shag.m)
+# From the summary, it can be seen that Shag abundance varies significantly based on the predictor year.
+
+# Visualization of how European Shag abundance has changed over the years with a linear model fit with 95% confidence intervals.
+shag.p <- ggplot(shag, aes(x = year, y = pop))+
+  geom_point(colour = '#483D8B')+
+  geom_smooth(method = glm, colour = '#483D8B', fill = '#483D8B', alpha = 0.6)+
+  scale_x_continuous(breaks = c(1975, 1980, 1985, 1990, 1995, 2000, 2005))+
+  theme.clean()+
+  labs(
+    x = ' ',
+    y = 'European Shag abundance')
+shag.p
+
+# Try the visualization again but with a poisson fit.
+shag.p2 <- ggplot(shag, aes(x = year, y = pop)) +
+    geom_point(colour = "#483D8B") +
+    geom_smooth(
+      method = "glm",
+      method.args = list(family = poisson),  # Force Poisson GLM
+      colour = "#483D8B", 
+      fill = "#483D8B", 
+      alpha = 0.6
+    ) +
+    scale_x_continuous(breaks = c(1975, 1980, 1985, 1990, 1995, 2000, 2005)) +
+    theme.clean() +
+    labs(
+      x = " ",
+      y = "European Shag abundance"
+    )
+shag.p2
+# Binomial distribution ----
+Weevil_damage <- read.csv('Weevil_damage.csv')
+
+# Making block a factor (a categorical variable)
+Weevil_damage$block <- as.factor(Weevil_damage$block)
+
+# Running the model
+weevil.m <- glm(damage_T_F ~ block, family = binomial, data = Weevil_damage)
+summary(weevil.m)
+
+# Challenge! ----
+ToothGrowth <- datasets::ToothGrowth
+str(ToothGrowth)
+
+## Are higher doses of vitamin C beneficial for tooth growth?----
+# The response (tooth growth) is continous while the predictor (vitamin C dose) is discrete. This suggests an ANOVA analysis. Just like before, I will do this through the built-in linear model.
+# But first, I need to make sure that the dose column is a factor.
+ToothGrowth$dose2 <- factor(ToothGrowth$dose)
+ToothGrowth.m <- lm(len ~ dose2, data = ToothGrowth)
+summary(ToothGrowth.m)
+ToothGrowth.m
+# The p value is very small (<0.05).
+# The adjusted R-squared is 0.69 which means that dose explains 69% of the variance.
+# We can also visualize this in a boxplot.
+(
+  ToothGrowth.p <- ggplot(ToothGrowth, aes(dose2, len))+
+    geom_boxplot(fill = '#CD3333', alpha = 0.8, colour = '#8D2323')+
+    theme.clean()+
+    theme(
+      axis.text.x = element_text(size = 12, angle = 0)
+    )+
+    labs(
+      x = 'Vitamin C dose [mg/day]',
+      y = 'Growth [length]'
+    )
+)
+# To answer the question, yes, higher doses of vitamin C result in higher tooth growth.
+
+## Does the method of administration (orange juice, OJ, or ascorbic acid, VC) influence the effect of the dose? ----
+# This question involves exploring whether introducing another predictor variable has an influence on the model.
+# The introduced variable is the method of administration. The new linear model involves multiplying both predictor variables.
+# The variable supp is already a factor so no need to change it.
+ToothGrowth.m2 <- lm(len ~ dose2 * supp, data = ToothGrowth)
+summary(ToothGrowth.m2)
+# The coefficients suggest that orange juice (OJ) has a positive effect on tooth growth while ascorbic acid (VC) has a negative effect.
+# The p-value is still below 0.05 and the adjusted R-squared is 0.77 which means that the predictor variables now explain 77% of the variance.
+# Let's visualize this.
+(
+  ToothGrowth.p2 <- ggplot(ToothGrowth, aes(x = dose2, y = len))+
+    geom_boxplot(alpha = 0.5, aes(colour = supp, fill = supp))+
+    labs(
+      x = 'Vitamin C dose [mg/day]',
+      y = 'Length [length]',
+    )+
+    theme.clean()
+)
+
+## What would be the predicted tooth length of a guinea pig given 1 mg of vitamin C as ascorbic acid? ----
+# From the linear model in the previous question, the result would be the intercept plus the appropriate interaction.
+# The intercept (reference) represents OJ @ 0.5 mg/day is reported as 13.230.
+# Then, OJ @ 1 mg/day is reported as 9.470.
+# Then, the reference for ascorbic acid is suppVC (VC @ 0.5 mg/day) is reported as -5.250.
+# Then, VC @ 1 mg/day is reported as -.680.
+# Therefore, the predicted tooth length of a ginea pig given VC @ 1 mg/day is
+# (13.230 + 9.470) + (-5.25 -.680) = 16.77.
