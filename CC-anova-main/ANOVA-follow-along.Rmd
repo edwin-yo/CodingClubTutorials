@@ -1,0 +1,82 @@
+---
+title: "ANOVA follow along tutorial"
+author: "Edwin Yánez"
+date: "2025-02-20"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(vroom)
+```
+
+# Purpose
+The intend here is to follow along a CC (Coding Club) tutorial on conducting an ANOVA analysis. The end goal of doing this is to brush up on statistical anaylis and also get some practice with R. Some section of the tutorial will be quoted here but the tutorial is not expected to be replicated here in its entirety. The full tutorial can be found at <https://ourcodingclub.github.io/tutorials/anova/>.
+
+# Research question: How does frogspawn hatching time vary with temperature?
+According to CC the following is the definition of a research question:
+
+> A research question is an answerable enquiry related to your topic of interest. It should be clear and concise and it should **contain both your response and your explanatory variables**.
+
+Likewise, CC provides a definition for a manipulative experiment:
+
+> A manipulative study is one in which the **experimenter changes something about the experimental study system and studies the effect of this change**.
+
+For context, the experiment involves placing newly-layed frogspaw into 60 containers. From those 60 containers, 3 groups of 20 will be set at different temperatures: 13°C, 18°C, and 25°C. Here, the following is true:
+
++ The **response** variable is `Hatching_time`.
++ The **explanatory variable** is `Temperature`, with **3 levels**: 13°C, 18°C, and 25°C. 
+
+CC explains why one-way ANOVA is the appropriate method:
+
+> We want to compare the means of 3 independent groups (13°C, 18°C and 25°C temperature groups) and we have one continuous response variable (Hatching time) and one categorical explanatory variable (Temperature). **One-way ANOVA is the appropriate analysis!**
+
+# Formulating a hypothesis
+According to CC, a hypothesis and prediction should always be made before carrying out the analysis. Furthermore, CC states:
+
+> A hypothesis is a **tentative answer to a well-framed question**, referring to a mechanistic explanation of the expected pattern. It can be verified via **predictions**, which can be tested by making additional observations and performing experiments.
+
+CC emphasizes that some knowledge about the system under study is necessary. In this case, knowing that optima hatching temperature is between 15-20°C, the following are the hypothesis and prediction:
+
++ **Hypothesis:** Mean frogspawn hatching time will vary with temperature level.
++ **Prediction:** At the highest temperature, 25°C, hatching time will be reduced.
+
+# Data manipulation
+Import the data
+```{r data-import}
+frogs_messy_data <- vroom::vroom('frogs_messy_data.csv')
+glimpse(frogs_messy_data)
+```
+
+The data is given in wide format so cleaning the data involves arranging it into a long format.
+```{r tidying-data}
+# Data Formatting ----
+frogs_tidy_data <- frogs_messy_data %>% 
+  pivot_longer(
+    cols = c(2:4),
+    names_to = 'Temperature',
+    values_to = 'Hatching_time'
+  ) %>% 
+  mutate(
+    Temperature = parse_number(Temperature)
+  ) %>% 
+  select(c(Hatching_time, Temperature)) %>% 
+  drop_na() %>% 
+  mutate(
+    Temperature = as.factor(Temperature),
+    Temp_level = as.factor(
+      case_when(
+        Temperature == 13 ~ 'Low',
+        Temperature == 18 ~ 'Medium',
+        Temperature == 25 ~ 'High'
+        )
+      )
+  )
+
+## Save the clean data.
+write.csv(frogs_tidy_data, file = 'frogs_tidy_data.csv')
+```
+
+# Visualising distribution with a histogram
+
