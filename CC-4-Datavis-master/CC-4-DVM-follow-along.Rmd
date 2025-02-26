@@ -1,0 +1,44 @@
+---
+title: "CC-4-DVM-Follow-along"
+author: "Edwin Yánez"
+date: "2025-02-26"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+# Needed libraries
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+library(readr)
+library(gridExtra)
+library(vroom)
+
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Purpose.
+
+This is a follow-along document reporting my engagement with Coding Club's [Beautiful and informative data visualisation](https://ourcodingclub.github.io/tutorials/datavis/index.html) tutorial. Most of the content is lifted directly from there with minor modifications and updates from my part. Not everything in the tutorial should be expected to be replicated here.
+
+## Making different plots with ggplo2
+
+The following uses data from the [Living Planet Index](https://www.livingplanetindex.org/).
+
+```{r}
+# Load the data
+LPI <- vroom::vroom('LPIdata_CC.csv')
+LPI <- LPI %>% 
+  mutate(`1970` = as.numeric(`1970`))
+
+# Reshape from wide to long
+LPI2 <- LPI %>% 
+  pivot_longer(
+    cols = 9:53,
+    names_to = 'year',
+    values_to = 'abundance'
+  )
+```
+
+
+# 
