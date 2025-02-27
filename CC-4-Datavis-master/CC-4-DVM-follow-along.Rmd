@@ -12,6 +12,7 @@ library(dplyr)
 library(ggplot2)
 library(readr)
 library(gridExtra)
+library(stringr)
 library(vroom)
 
 knitr::opts_chunk$set(echo = TRUE)
@@ -25,11 +26,20 @@ This is a follow-along document reporting my engagement with Coding Club's [Beau
 
 The following uses data from the [Living Planet Index](https://www.livingplanetindex.org/).
 
-```{r}
-# Load the data
+```{r load-dataset}
+# Load the data.
 LPI <- vroom::vroom('LPIdata_CC.csv')
+
+# After some trial and error it was found that most year columns were parsed as numeric but at least one is parsed as character each time. This inconsistency is not addressed in the tutorial (even when using `read.csv()`). The following lines address this issue.
+# Create an array of the names of the year-columns.
+year_columns <- names(LPI) %>% 
+  .[stringr::str_detect(., '\\d{4}$')]
+
+# Use the character array to force numeric type.
 LPI <- LPI %>% 
-  mutate(`1970` = as.numeric(`1970`))
+  mutate(
+    across(all_of(year_columns), as.numeric)
+  )
 
 # Reshape from wide to long
 LPI2 <- LPI %>% 
@@ -40,5 +50,50 @@ LPI2 <- LPI %>%
   )
 ```
 
+Since this is a very large dataset, the first few graphs are focus on the *how* the population of **only one species** has changed. It can be done with any species but to ensure that the analysis matches that of the tutorial, the chosen species is *Griffon vulture / Eurasian griffon*.
 
-# 
+```{r species-pick}
+# Here a portion of the tibble is sectioned according to the species. NAs are also dropped.
+vulture <- LPI2 %>%
+  filter(`Common Name` == 'Griffon vulture / Eurasian griffon') %>% 
+  drop_na()
+```
+
+### Histograms to visualize data distribution
+```{r histograms}
+# With base R graphics ----
+vulture_hist_base <- ggplot(vulture, aes(x = abundance))+
+  geom_histogram()
+vulture_hist_base
+
+# With ggplot2: ----
+vulture_hist_gg <- vulture %>% 
+  ggplot(aes(x = abundance))+
+  geom_histogram()
+vulture_hist_gg
+
+# Beautification of the plot ----
+vulture_hist <- vulture %>% 
+  ggplot(aes(x = abundance))+
+  geom_histogram(binwidth = 250, colour = '#8b5a00', fill = '#cd8500')+
+  geom_vline(
+    aes(xintercept = mean(abundance)),
+    colour = 'red', linetype = 'dashed', linewidth = 1
+  )+
+  theme_bw()+
+  ylab('Count\n')+
+  xlab('\nGriffon vulture abundance')+
+  theme(
+    axis.text = element_text(size = 12),
+    axis.title.x = element_text(size = 14, face = 'plain'),
+    panel.grid = element_blank(),
+    plot.margin = unit(c(1,1,1,1), units = , 'cm')
+  )
+vulture_hist
+```
+
+
+
+
+
+
