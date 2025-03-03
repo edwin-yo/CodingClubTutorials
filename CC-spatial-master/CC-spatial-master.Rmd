@@ -1,0 +1,23 @@
+---
+title: "CC Spatial Master follow along"
+author: "Edwin Yánez"
+date: "2025-03-03"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(sp)
+#library(rgdal)   # Phased out in 2023
+library(terra)   # Succesor of rgdal
+library(raster)
+library(ggplot2)
+library(viridis)
+library(rasterVis)
+```
+
+## Purpose
+This is a follow-along document reporting my engagement with Coding Club's [Intro to spatial analysis in R](https://ourcodingclub.github.io/tutorials/spatial/index.html) tutorial. Most of the content is lifted directly from there with minor modifications and updates from my part. Not everything in the tutorial should be expected to be replicated here.
+
+## Explore raster data
