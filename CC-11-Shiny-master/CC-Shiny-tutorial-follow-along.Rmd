@@ -1,0 +1,24 @@
+---
+title: "CC Shiny tutorial follow along"
+author: "Edwin Yánez"
+date: "2025-03-05"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Purpose
+This is a follow-along document reporting my engagement with Coding Club's [Getting Started with Shiny](https://ourcodingclub.github.io/tutorials/shiny/index.html) tutorial. Most of the content is lifted directly from there with minor modifications and updates from my part. Not everything in the tutorial should be expected to be replicated here.
+
+
+
+
+
+
+
+
+
+
+
