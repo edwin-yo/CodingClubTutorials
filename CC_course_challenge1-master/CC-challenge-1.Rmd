@@ -1,0 +1,270 @@
+---
+title: "CC Challenge 1!"
+author: "Edwin Yánez"
+date: "2025-03-06"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(vroom)
+```
+
+## Purpose
+In this document I showcase my skills learned during the first course on CC. The instructions are taken as they appear on their website at [Stats from Scratch challenge: Where are the red squirrels?](https://ourcodingclub.github.io/course/stats-scratch-challenge/index.html). As one is encouraged to use the provided version of the data, I have also avoided including the links to the original sources here; they are still available over on the Challenge 1 page.
+
+## Data overview
+### The Scottish Squirrel Database
+`squirrels.csv`: A dataset of grey and red squirrel observations compiled by the **Scottish Wildlife Trust** and hosted on the **NBN Atlas**. The most relevant variables in the dataset for this challenge are:
+
++ Year: the year of the sighting
++ Count: the number of squirrels sighted on the occasion (if blank, assume it is 1)
++ OSGR: the Ordnance Survey **grid reference** for 10 x 10 km squares; will be useful to link the forest cover data
+
+### Forest cover
+`forestcoverOS.csv`: This dataset contains the forest cover (in % and total area) in each OS grid cell. This dataset was created by us*, using:
+
+The National Forest Inventory for Scotland 2017, from the **Forestry Commission**
+OS grid cells at a 10 x 10 km resolution, from **this Git repository**
+
+## Specific tasks
+
+Here is a detailed list of the tasks you should achieve within this challenge. Remember that a challenge is meant to be, well, challenging, and therefore we are setting you goals but the choice of workflow and functions to achieve them is up to you! We also list the questions that will be asked in the quiz at the end to confirm your successful completion - we suggest you take note of your answers as you go.
+
+### 1. Data manipulation
+Clean the squirrel dataset for the last decade, so it’s ready to analyse. Specifically, you should:
+
++ Keep only observations for the years 2008 to 2017 (using the Start.date.year column and renaming it to year)
++ Remove the observations that are not at the species level (i.e. we don’t know whether they are grey or red squirrels)
++ Create a species column that will have Red and Grey as factor levels
++ We will assume that the observations that have NA as count are observations of one squirrel; replace them with the value 1.
+
+**Be prepared to answer the question:**
+
++ To the nearest thousand, how large is your cleaned dataset?
+
+  There are approximately 71'000 rows.
+
+```{r taks-1}
+squirrels_raw <- vroom::vroom('./data/squirrels.csv')
+forest_cover_raw <- vroom::vroom('./data/forestcoverOS.csv')
+
+squirrels <- squirrels_raw %>% 
+  rename(
+    year = `Start date year`
+  ) %>% 
+  filter(year %in% 2008:2017) %>% 
+  filter(`Common name` %in% c('Red Squirrel', 'Grey Squirrel')) %>% 
+  mutate(
+    species = factor(
+      case_when(
+        `Common name` == 'Red Squirrel' ~ 'Red',
+        `Common name` == 'Grey Squirrel' ~ 'Grey',
+      ),
+      levels = c('Red', 'Grey')
+    )
+  ) %>% 
+  relocate(species, .after = 'Common name') %>%
+  mutate(
+    `Individual count` = ifelse(is.na(`Individual count`), 1, `Individual count`)
+  )
+
+# Length of cleaned dataset:
+nrow(squirrels)
+```
+
+### 2. Temporal trends
+Determine if there is a temporal trend in the number of observations for red and grey squirrels (2008-2017). Specifically, you should:
+
++ Summarise the number of observations per species and per year. (That means a total number of red vs grey squirrels for each year.) A more complex analysis would also account for spatial autocorrelation and other factors, but as a preliminary analysis you are only asked to consider the total numbers at the national scale.
++ Plot the data and run one linear model to test the question Have squirrel populations increased or decreased over time, and is the trend the same for red and grey squirrels?
+
+**Be prepared to answer the questions:**
+
++ Which species showed the strongest change over time?
+
+  From the combined linear model, we can extract the individual equations like so:
+  
+  $\text{red squirrel} = -800490.9 + 399.7 * year$
+  
+  $\text{grey squirrel} = -439533 + 220 * year$
+  
+  We can see that the slope for red squirrels is greater than that for grey squirrels. Therefore, red squirrels experienced the strongest change.
+
++ What were your predictor variable(s) and their data type in the model?
+
+  The predictor variables were **species** and **year**. Their data types were *factor* and *numeric* respectively.
+
++ What is the adjusted R-squared of the regression?
+
+  The adjusted R-squared is 0.5227. This means that the model explains about 52% of the variance.
+
++ Considering the nature of our response variable, what modelling approach would be the most appropriate? (Don’t worry if you only ran a linear regression! It’s a justifiable approach for a preliminary analysis, and for such large numbers the results will be similar.)
+
+  Since we are dealing with count data, the recommended modelling approach would have been a poisson model as per the tutorial on statistical modeling.
+
+**Think about the following:** what could be the reasons for this trend? Is it ecologically meaningful? Are there any biases in the data to be aware of?
+
+```{r task-2.1, fig.align='center', fig.height=7}
+observations <- squirrels %>% 
+  group_by(species, year) %>% 
+  summarise(
+    totals = n()
+  ) %>% 
+  ungroup()
+
+p <- ggplot(data = observations, aes(x = species, y = totals, fill = species))+
+  geom_col()+
+  facet_wrap(~ year)+#, scales = 'free_y')+
+  scale_y_continuous(breaks = seq(0, 6000, 1000))+
+  scale_fill_manual(
+    values = c('#D07136', '#AAB7D0'),
+    name = 'Squirrel Species'
+  )+
+  labs(
+    x = '',
+    y = 'Number of squirrels',
+    title = 'Number of Red and Grey squirrels over the years'
+  )+
+  theme_bw()+
+  theme(
+    plot.title = element_text(size = 16, face = 'bold'),
+    axis.title = element_text(size = 14, face = 'bold'),
+    axis.text = element_text(size = 12),
+    axis.text.x = element_blank(),
+    legend.position = 'inside',
+    legend.position.inside = c(.75,.15),
+    legend.title = element_text(size = 14, face = 'bold'),
+    legend.text = element_text(size = 14),
+    legend.box.background = element_rect()
+  )+
+  guides(
+    fill = guide_legend(nrow = 1)
+  )
+p
+```
+
+```{r task-2.2}
+red.m <- observations %>% 
+  filter(species == 'Red') %>% 
+  lm(data = ., totals ~ year)
+
+grey.m <- observations %>% 
+  filter(species == 'Grey') %>% 
+  lm(data = ., totals ~ year)
+
+red.grey.m <- lm(data = observations, formula = totals ~ species*year)
+
+summary(red.m)
+summary(grey.m)
+summary(red.grey.m)
+```
+
+### 3. Do red and grey squirrels prefer different habitats?
+
+We usually think of grey squirrels as city dwellers, while red squirrels require extensive forest cover. Determine whether recent squirrel counts in OS grid cells (10km) are linked to forest cover in that cell. 
+
+Specifically, you should:
+
++ Filter the data to the period covering 2015-2017. Summarise the squirrel count data at the species and grid cell level. (You can sum counts across years; this is not ideal but since we’re only dealing with a few years of data this will give us a population index that allows for inconsistent sampling across years, hopefully without double-counting too much.) Remove observations greater than 300, as they mess up with the plots later (but feel free to experiment with different subsets!).
++ Merge the squirrel and forest datasets
++ Visualise the scatterplot of abundance as a function of forest cover for each species. Run one linear model (bonus: try a glm with the appropriate distribution) to test the relationship.
+
+**Be prepared to answer the questions:**
+
++ Are red squirrels significantly associated with forested areas?
+
+  We cannot reject the null hypothesis since the p-value is higher than 0.05. Therefore, we cannot tell whether squirrels of any species are more or less associated with more or less forest coevered areas.
+
++ Does the model explain the variation in the data well?
+
+  The adjusted R-squared is 0.001114. This means that the model only explains about 0.1% of the variation. Therefore, the model does not explain well the variation in the data.
+
+```{r task-3.1}
+squirrels.h <- squirrels %>% 
+  filter(year %in% 2015:2017) %>% 
+  group_by(species, `OSGR 10km`) %>% 
+  summarise(
+    counts = n()
+  ) %>% 
+  ungroup %>% 
+  filter(counts <= 300)
+```
+
+```{r task-3.2}
+squirrels.forest <- squirrels.h %>% 
+  left_join(forest_cover_raw, join_by(`OSGR 10km` == TILE_NAME)) %>% 
+  drop_na()
+```
+
+```{r task-3.3, fig.align='center'}
+p <- squirrels.forest %>% 
+  ggplot(aes(x = cover, y = counts, color = species))+
+  geom_smooth(method = 'lm')+
+  geom_point(alpha = 0.5)+
+  theme_bw()
+p
+```
+
+```{r task-3.4}
+squirrels.forest.lm <- squirrels.forest %>% 
+  lm(data = ., formula = counts ~ cover*species)
+
+summary(squirrels.forest.lm)
+
+# A poisson distribution
+squirrels.forest.glm <- squirrels.forest %>% 
+  glm(data = ., formula = counts ~ cover*species, family = poisson)
+
+summary(squirrels.forest.glm)
+```
+
+### 4. Re-classify forest cover
+Building on the previous point, try turning the forest cover data into a categorical variable, and use the visual representation of your choice to display the median abundance of grey and red squirrels in these classes, and the uncertainty around these measures. Specifically, you should:
+
++ Transform the cover data into a cover.class variable with the following bins:
+  + 0-10%
+  + 10-20%
+  + 20-30%
+  + 30-40%
+  + 40-50%
+  + 50+%
+
++ Create your visualisation
+
+**Be prepared to answer the question:**
+
++ In what cover classes are red squirrels more abundant than the grey?
+  
+  Based on the median, and according to the boxplot, red squirrels are predominant at the *20-30%*, *30-40%*, and *50+%* forest cover.
+
+```{r task-4.1}
+squirrels.forest.class <- squirrels.forest %>% 
+  mutate(
+    `Cover class` = factor(
+      case_when(
+        cover >= 0 & cover < .1 ~ '0-10%',
+        cover >= .1 & cover < .2 ~ '10-20%',
+        cover >= .2 & cover < .3 ~ '20-30%',
+        cover >= .3 & cover < .4 ~ '30-40%',
+        cover >= .4 & cover < .5 ~ '40-50%',
+        cover >= .5 ~ '50+%'
+      ),
+      levels = c('0-10%', '10-20%', '20-30%', '30-40%', '40-50%', '50+%')
+    )
+  )
+```
+
+```{r task-4.2}
+#squirrels.forest.class.p <- squirrels.forest.class %>% 
+
+p <- squirrels.forest.class %>% 
+  ggplot(aes(x = `Cover class`, y = counts, fill = species))+
+  geom_boxplot()+
+  theme_bw()
+p
+```
+
+
+
