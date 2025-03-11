@@ -10,6 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 library(tidyverse)
 library(sf)
+library(colorspace)
 ```
 
 ## Purpose
@@ -62,7 +63,7 @@ You will need to clean and filter the data to the sites and woodland types of in
 NB: There are 6 more NNRs within the Cairngorms National Park, but these three are large ones within the core of the park, and the only ones we’ll be considering for this analysis.
 
 **HINT:** Once you have filtered both datasets to only keep the regions and habitats of interest, the best way forward is to create **one object** that combines the two: i.e. only keep the habitats of interest that are found within the regions of interest. You may need some indepent research to figure it out, but only one function from the sf package is required to achieve this. To get you started, know that all sf functions begin with “st“, and this type of spatial operation is called an _intersection…
-```{r}
+```{r task-1.1}
 NWSS_raw <- readRDS('data/NWSS.RDS')
 species_structure_raw <- readRDS('data/species_structure.RDS')
 SNH_national_reserves_raw <- readRDS('data/SNH_national_reserves.RDS')
@@ -71,10 +72,15 @@ SNH_national_reserves_raw <- readRDS('data/SNH_national_reserves.RDS')
 st_crs(NWSS_raw) <- st_crs(NWSS_raw)
 st_crs(SNH_national_reserves_raw) <- st_crs(SNH_national_reserves_raw)
 
-nwss <- NWSS_raw %>% 
+# Habitats of interest
+nwss <- NWSS_raw %>%  
   filter(DOM_HABITA %in% c('Native pinewood', 'Upland birchwood', 'Upland mixed ashwood', 'Upland oakwood', 'Wet woodland', 'Lowland mixed deciduous woodland')) %>% 
+  mutate(
+    DOM_HABITA = fct_drop(DOM_HABITA)
+  ) %>% 
   drop_na()
 
+# Regions of interest
 snh <- SNH_national_reserves_raw %>% 
   filter(NAME %in% c('The Great Trossachs Forest', 'Glen Affric', 'Cairngorms', 'Mar Lodge Estate', 'Abernethy')) %>%
   mutate(
@@ -85,9 +91,111 @@ snh <- SNH_national_reserves_raw %>%
     )
   ) %>% 
   drop_na()
+
+combined <- st_intersection(nwss, snh)
 ```
 
+### 2. Map the areas of interest
+Create a map for each of the three areas (Cairngorms, Trossachs, and Glen Affric) showing the geographical distribution of the priority habitats. **Specifically, you should:**
 
++ Create a colour palette that you will use consistently to refer to the habitat types
++ Produce a map for each region, complete with a legend. 
+
+**Be prepared to answer the question**:
+
++ What type(s) of priority habitat is (are) found in the Trossachs but not in the other two areas?
+
+**HINT:** Producing a map is not very different than producing any other plot. The sf package integrates almost seamlessly with ggplot2, so you can use all your favourite ways of selecting colours based on factor levels, adding text and legends, etc. The only difference is that the sf objects are called in your plot through `geom_sf`.
+```{r task-2.1, fig.align='center'}
+habitat_levels = levels(combined$DOM_HABITA)
+
+my_palette <- qualitative_hcl(
+  n = length(habitat_levels),
+  palette = 'Dark 3'
+) %>% 
+  setNames(habitat_levels)
+
+p <- combined %>% 
+  nest_by(NAME) %>% 
+  mutate(
+    plots = list(
+      ggplot(data = data, aes(fill = DOM_HABITA))+
+        geom_sf()+
+        scale_fill_manual(
+          values = my_palette,
+          name = 'Habitats',
+          guide = guide_legend(
+            ncol = 3,
+            byrow = TRUE,
+            title.position = 'top'
+          )
+        )+
+        labs(
+          title = paste('Map of Habitats present in', NAME)
+        )+
+        theme_bw()+
+        theme(
+          axis.text = element_text(size = 11),
+          plot.title = element_text(size = 14, hjust = 0.5, face = 'bold'),
+          plot.margin = unit(c(.5,.5,.5,.5), units = , 'cm'),
+          legend.title = element_text(face = 'bold', hjust = .5),
+          legend.position = 'bottom',
+          legend.frame = element_rect()
+        )
+    )
+  )
+p$plots
+```
+```{r task-2.2}
+# Answering the question about the priority habitats found in Trossachs but not in the other two areas:
+# Approach 1:
+temp <- rbind(p$data[[1]], p$data[[2]]) %>% tibble()
+print(
+  anti_join(tibble(p$data[[3]]), temp, join_by(DOM_HABITA)) %>% 
+    distinct(DOM_HABITA) %>% 
+    rename(
+      `Priority habitats present only in Trossachs` = DOM_HABITA
+    )
+)
+
+# Aproach 2:
+other_habitats <-
+  combined %>% 
+  tibble() %>% 
+  select(DOM_HABITA, NAME) %>% 
+  filter(NAME != 'Trossachs') %>% 
+  distinct()
+  
+trossachs_habitats <-
+  combined %>% 
+  tibble() %>% 
+  select(DOM_HABITA, NAME) %>% 
+  filter(NAME == 'Trossachs') %>% 
+  distinct()
+  
+answer <- 
+  anti_join(
+    trossachs_habitats,
+    other_habitats,
+    join_by(DOM_HABITA)
+  ) %>% 
+  distinct(DOM_HABITA) %>% 
+  rename(
+    `Priority habitats present only in Trossachs` = DOM_HABITA
+  )
+print(answer)
+```
+
+### 3. Calculate the proportion of land (in %) covered by each habitat in the three areas.
+The total `NNR` area is found in the cell `SITE_HA`, and the habitat polygon size is contained in the cell HECTARES. (Note that there are more than one polygon per habitat type! Think about grouping observations first.)
+
+**Specifically, you should:**
+
++ Create a graph of your choice to represent the proportion of each habitat within the three reserves.
+Be prepared to answer the questions:
+
+What type of graph did you create?
+What proportion of Glen Affric is covered in pinewoods?
 
 
 
