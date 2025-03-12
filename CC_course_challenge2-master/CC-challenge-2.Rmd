@@ -149,6 +149,8 @@ p$plots
 ```{r task-2.2}
 # Answering the question about the priority habitats found in Trossachs but not in the other two areas:
 # Approach 1:
+# This approach is commented out because it is obscure and relies on hardcoded indices. However, I have decided to keep it as written because it provides insisght on how R works. This approach produces an identical result to approach 2.
+if(FALSE){
 temp <- rbind(p$data[[1]], p$data[[2]]) %>% tibble()
 print(
   anti_join(tibble(p$data[[3]]), temp, join_by(DOM_HABITA)) %>% 
@@ -157,6 +159,7 @@ print(
       `Priority habitats present only in Trossachs` = DOM_HABITA
     )
 )
+}
 
 # Aproach 2:
 other_habitats <-
@@ -187,19 +190,169 @@ print(answer)
 ```
 
 ### 3. Calculate the proportion of land (in %) covered by each habitat in the three areas.
-The total `NNR` area is found in the cell `SITE_HA`, and the habitat polygon size is contained in the cell HECTARES. (Note that there are more than one polygon per habitat type! Think about grouping observations first.)
+The total NNR area is found in the cell `SITE_HA`, and the habitat polygon size is contained in the cell `HECTARES`. (Note that there are more than one polygon per habitat type! Think about grouping observations first.)
 
 **Specifically, you should:**
 
 + Create a graph of your choice to represent the proportion of each habitat within the three reserves.
 Be prepared to answer the questions:
 
-What type of graph did you create?
-What proportion of Glen Affric is covered in pinewoods?
++ What type of graph did you create?
+
+  I first created a regular bar chart with `geom_col` (because I already have a summary table). However, then I ended up doing a *lollipop chart* because, to me, it looks better than plain bars.
+  
++ What proportion of Glen Affric is covered in pinewoods?
+
+  About 16.85% of Glen Affric is covered in Native pinewood.
+  
+
+```{r task-3.1}
+habitat_area <- combined %>%
+  st_drop_geometry() %>%
+  group_by(NAME, DOM_HABITA) %>%
+  summarise(
+    habitat_hectares = sum(HECTARES),
+    .groups = "drop"
+  )
+
+reserve_area <- combined %>%
+  st_drop_geometry() %>%
+  group_by(NAME) %>%
+  summarise(
+    total_hectares = sum(unique(SITE_HA)), 
+    .groups = "drop"
+  )
+
+coverage <- habitat_area %>% 
+  left_join(reserve_area, join_by('NAME')) %>% 
+  mutate(
+    pct = habitat_hectares * 100 / total_hectares
+  )
+print(coverage)
+```
+
+```{r task-3.2, fig.align='center', fig.width=8}
+# Traditional approach
+p <- coverage %>% 
+  nest_by(NAME) %>% 
+  mutate(
+    plots = list(
+      ggplot(data = data, aes(y = fct_reorder(DOM_HABITA, pct), x = pct, fill = DOM_HABITA))+
+        geom_col()+
+        #scale_x_continuous(limits = c(0, 20))+
+        scale_fill_manual(
+          values = my_palette,
+          name = '',
+          guide = guide_legend(
+            ncol = 3,
+            byrow = TRUE,
+            title.position = 'top'
+          )
+        )+
+        labs(
+          title = paste('Percent coverage of priority habitats in', NAME)
+        )+
+        theme_bw()+
+        theme(
+          plot.title = element_text(size = 14, face = 'bold', hjust = .5),
+          axis.text = element_text(size = 12),
+          axis.title.x = element_blank(),
+          axis.title.y = element_blank(),
+          legend.position = 'none'
+        )
+    )
+  )
+p$plots
+```
+
+```{r task-3.3, fig.width=8}
+# Fancy approach
+p <- coverage %>% 
+  nest_by(NAME) %>% 
+  mutate(
+    plots = list(
+      ggplot(data = data, aes(y = fct_reorder(DOM_HABITA, pct), x = pct, color = DOM_HABITA))+
+        geom_segment(
+          aes(
+            x = 0, xend = pct,
+            yend = DOM_HABITA,
+          ),
+          linewidth = 2
+        )+
+        geom_point(size = 7)+
+        scale_color_manual(
+          values = my_palette,
+          name = '',
+          guide = guide_legend(
+            ncol = 3,
+            byrow = TRUE,
+            title.position = 'top'
+          )
+        )+
+        labs(
+          title = paste('Percent coverage of priority habitats in', NAME)
+        )+
+        theme_bw()+
+        theme(
+          plot.title = element_text(size = 14, face = 'bold', hjust = .5),
+          axis.text = element_text(size = 12),
+          axis.title.x = element_blank(),
+          axis.title.y = element_blank(),
+          legend.position = 'none'
+        )
+    )
+  )
+p$plots
+```
+
+```{r task-3.4}
+# What proportion of Glen Affric is covered in pinewoods?
+coverage %>% filter(NAME == 'Glen Affric') %>% print()
+```
+
+### 4. Calculate the species richness and evenness of the three areas.
+**Species richness** simply corresponds to the number of different species in each area. (Tip: all the species information can be found in *species_structure.RDS.*)
+
+**Species evenness** is a value between 0 (not even at all) and 1 (perfectly even) indicating how equitably species are represented, abundance-wise (i.e., is there one very dominant species, or are all species found in similar proportions?). A way of calculating this is to divide H’, the Shannon diversity index, by the natural logarithm (ln) of species richness that you have previously calculated. The Shannon diversity index is calculated as such:
+
+$$H' = -\sum\limits_{i=1}^{S} \left( p_i \cdot \ln(p_i) \right)$$
+
+where $p_i$ in our case is the proportion of species $i$ cover (`ESTIMT_HA`) relative to the cover of all species.
+
+**Specifically, you should:**
+
++ Calculate the richness, the Shannon index, and the evenness for all three sites. (Hint: some pipe chains involving our favourite dplyr functions may be useful here!)
++ Create a map that visually represents the difference in evenness among the three sites. (Think colour gradient.)
+
+**Be ready to answer the questions:**
+
++ Which area has the most species?
+
+  Trossachs have the greatest richness with 54 species.
+
++ Which area has the lowest evenness?
+
+  
+
+```{r task-4.1}
+combined2 <- combined %>% 
+  left_join(species_structure_raw, join_by(SCPTDATA_I))
+
+# Richness as the number of species in each area:
+richness <- combined2 %>% 
+  st_drop_geometry() %>% 
+  group_by(NAME) %>% 
+  summarize(
+    Richness = n_distinct(SPECIES),
+    .groups = 'drop'
+  ) %>% 
+  rename(
+    Area = NAME
+  )
+print(richness)
 
 
-
-
+```
 
 
 
