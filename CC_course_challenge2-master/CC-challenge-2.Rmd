@@ -9,6 +9,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 
 library(tidyverse)
+library(ggrepel)
 library(sf)
 library(colorspace)
 ```
@@ -110,8 +111,7 @@ Create a map for each of the three areas (Cairngorms, Trossachs, and Glen Affric
 habitat_levels = levels(combined$DOM_HABITA)
 
 my_palette <- qualitative_hcl(
-  n = length(habitat_levels),
-  palette = 'Dark 3'
+  n = length(habitat_levels)
 ) %>% 
   setNames(habitat_levels)
 
@@ -315,7 +315,7 @@ coverage %>% filter(NAME == 'Glen Affric') %>% print()
 
 **Species evenness** is a value between 0 (not even at all) and 1 (perfectly even) indicating how equitably species are represented, abundance-wise (i.e., is there one very dominant species, or are all species found in similar proportions?). A way of calculating this is to divide H’, the Shannon diversity index, by the natural logarithm (ln) of species richness that you have previously calculated. The Shannon diversity index is calculated as such:
 
-$$H' = -\sum\limits_{i=1}^{S} \left( p_i \cdot \ln(p_i) \right)$$
+$$H' = -\sum \left( p_i \cdot \ln(p_i) \right)$$
 
 where $p_i$ in our case is the proportion of species $i$ cover (`ESTIMT_HA`) relative to the cover of all species.
 
@@ -331,8 +331,8 @@ where $p_i$ in our case is the proportion of species $i$ cover (`ESTIMT_HA`) rel
   Trossachs have the greatest richness with 54 species.
 
 + Which area has the lowest evenness?
-
   
+  Cairngorms has the lowest evenness.
 
 ```{r task-4.1}
 combined2 <- combined %>% 
@@ -345,15 +345,95 @@ richness <- combined2 %>%
   summarize(
     Richness = n_distinct(SPECIES),
     .groups = 'drop'
-  ) %>% 
-  rename(
-    Area = NAME
   )
 print(richness)
-
-
 ```
 
+```{r task-4.2}
+# Evenness calculation
+# First, calculate p_i ----
+species_coverage <- combined2 %>% 
+  st_drop_geometry() %>% 
+  group_by(NAME, SPECIES) %>% 
+  summarize(
+    species_coverage = sum(ESTIMT_HA), # Total number of hectares covered by each species within each area.
+    .groups = 'drop'
+  ) %>% 
+  as_tibble()
+
+species_total_coverage <- combined2 %>% 
+  st_drop_geometry() %>% 
+  group_by(NAME) %>% 
+  summarise(
+    total_coverage = sum(ESTIMT_HA),   # Total area, in hectares, covered by all species in the area.
+    .groups = 'drop'
+  ) %>% 
+  as_tibble()
+
+species_percent <- species_coverage %>% 
+  left_join(
+    species_total_coverage,
+    join_by(NAME == NAME)
+  ) %>% 
+  mutate(
+    p_i = species_coverage / total_coverage
+  ) 
+print(species_percent)
+
+# Second, calculate Shannon's diversity index ----
+shannon <- species_percent %>% 
+  filter(p_i > 0) %>% 
+  group_by(NAME) %>% 
+  summarise(
+    H = - sum(p_i * log(p_i)),
+    .groups = 'drop'
+  )
+
+# Third, calculate evenness ----
+evenness_table <- shannon %>% 
+  left_join(richness, join_by(NAME)) %>% 
+  mutate(
+    evenness = H / log(Richness)
+  )
+evenness_table
+```
+
+```{r task-4.3, fig.align='center'}
+my_palette2 <- sequential_hcl(
+  n = n_distinct(evenness_table$NAME)
+) %>% 
+  set_names(unique(evenness_table$NAME))
+
+snh_combined <- snh %>%
+  group_by(NAME) %>%
+  summarise(geometry = st_union(geometry))
+
+p <- evenness_table %>% 
+  left_join(
+    snh_combined,
+    join_by(NAME)
+  ) %>% 
+  st_as_sf() %>% 
+  ggplot(aes(fill = evenness))+
+  scale_fill_gradientn(
+    colors = my_palette2,
+    name = 'Evenness'
+  )+
+  geom_sf()+
+  geom_label_repel(
+    aes(label = NAME, geometry = geometry, hjust = 1, vjust = 1),
+    stat = 'sf_coordinates',
+    force = 75
+  )+
+  #geom_sf_text(aes(label = NAME), color = "black", size = 4, fontface = "bold") +
+  labs(
+    title = 'Evenness across NNR'
+  )+
+  theme_bw()+theme(
+    plot.title = element_text(hjust = .5, face = 'bold')
+  )
+p
+```
 
 
 
