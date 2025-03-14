@@ -1,0 +1,138 @@
+---
+title: "CC Tutorial Functions and Loops"
+author: "Edwin Yánez"
+date: "2025-03-14"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(vroom)
+```
+
+## Purpose
+This is a follow-along document reporting my engagement with Coding Club's [Intro to functional programming](https://ourcodingclub.github.io/tutorials/funandloops/index.html) tutorial. Most of the content is lifted directly from there with minor modifications and updates from my part. Not everything in the tutorial should be expected to be replicated here.
+
+The data contains information on tree stems surveyed in four 1 Ha plots at fieldsites around southern Africa. trees_bicuar contains data for trees in Bicuar National Park in southwest Angola, and trees_mlunguya contains data for trees in southern Mozambique. Each tree stem >5 cm trunk diameter was measured for tree height and trunk diameter, and identified to species.
+
+## Building a simple function
+```{r}
+trees_bicuar <- vroom::vroom('trees_bicuar.csv')
+trees_mlunguya <- vroom::vroom('trees_mlunguya.csv')
+```
+
+The basic syntax for creating a function looks like this:
+```{r}
+example.fn <- function(x,y){
+  # Perform an action using x and y
+  x + y
+}
+example.fn(x = 1, y = 2)
+```
+
+Note that the convention is to name a function using `.` rather than `_` which is normally used to define data objects. This isn’t a rule, but it’s best to stick to the conventions used by other programmers to keep things consistent.
+
+We can also define a function that calculates the basal area of each stem in m^2 from the diameter, which is in cm. The basal area is the cross-sectional area of the tree trunk if it was cut parallel to the ground.
+```{r}
+basal.area <- function(x){
+  (pi*(x)^2)/40000
+}
+```
+
+This function has one input, x. x can be a numeric vector, or a numeric column in a dataframe, basically anything that doesn’t cause an error in the body of the function. The body of the function multiplies x^2 by pi, then divides by 40,000, giving the basal area as an output.
+
+Test the function by supplying the diameter column from the Bicuar tree stem data (trees_bicuar$diam) to see what the output is:
+```{r}
+basal.area(x = trees_bicuar$diam)
+```
+
+
+Function arguments don’t need to be called x and y, they can be any character string, for example, the function below works identically to the one above, only x is now referred to as dbh:
+```{r}
+basal.area <- function(dbh){
+	(pi*(dbh)^2)/40000
+}
+```
+
+Additionally, you can add a indeterminate number of extra arguments using the `...` operator. Imagine that we want to extend our `basal.area()` function so that it can compute the combined basal area of multiple vectors of diameter measurements, e.g. from multiple sites:
+```{r}
+basal.area <- function(...){
+  (pi*c(...)^2)/40000
+}
+basal.area(trees_bicuar$diam, trees_mlunguya$diam)
+```
+
+Just like a normal function, the output of basal.area() can be assigned to a new object, for example, as a new column in trees_bicuar:
+```{r}
+trees_bicuar$ba <- basal.area(dbh = trees_bicuar$diam)
+```
+
+Writing functions for simple operations like the example above is useful if you want to perform the same operation multiple times throughout a script and don’t want to copy and paste the same code (e.g. (pi*(dbh)^2)/40000) multiple times, this reduces the chances that you will make a typo when copying and pasting.
+
+## Functions in loops
+We’ve seen how to write a function and how they can be used to create concise re-usable operations that can be applied multiple times in a script without having to copy and paste, but where functions really come into their own is when combined with looping procedures. Loops serve to run the same operation on a group of objects, further minimising the replication of code.
+
+Loops come in two main variants in R, `for()` loops and `while()` loops. In this workshop we will focus on `for()` loops, which are generally easier to read than `while()` loops, and can be used to perform the same sorts of actions. `while()` loops are used mainly when the user wants to perform an action a set number of times, whereas a `for()` loop is generally used when the user wants to perform an action on a named set of objects.
+
+A `for()` loop iterates through a number of items, most commonly stored as a list, and performs some action equally on each item. It can drastically reduce the amount of copying and pasting.
+
+The basic syntax for creating a `for()` loop looks like this:
+```{r}
+while(FALSE){
+  for(i in list){
+      # PERFORM SOME ACTION
+  }
+}
+```
+
+Imagine you have multiple field sites, each with four 1 Ha plots with the tree stem measurements described earlier. The data for each fieldsite is contained in a different dataframe, e.g. trees_bicuar and trees_mlunguya. If we wanted to calculate the basal area for all stems at both sites, we could run:
+```{r}
+trees_bicuar$ba <- basal.area(trees_bicuar$diam)
+trees_mlunguya$ba <- basal.area(trees_mlunguya$diam)
+```
+
+The above seems fine for now, but what if we had 100 field sites instead of just two? In that case, you can use a `for()` loop. First, we have to create a list of dataframes to perform the loop on. There are many ways of doing this, but the simplest way is:
+```{r}
+trees <- list(`trees_bicuar` = trees_bicuar, 'trees_mlunguya' = trees_mlunguya)
+```
+
+This makes a list called trees, where each element in the list is a dataframe. List items within a list can be accessed using double square brackets, e.g. `trees[[1]]` selects the first list item, the dataframe for `trees_bicuar`. We can take advantage of this method of list indexing using square brackets when we construct our `for()` loop:
+```{r}
+for( i in 1:length(trees) ){
+	trees[[i]]$ba <- basal.area(trees[[i]]$diam)
+}
+```
+
+The above example illustrates how loops work, but often, data are not separated into multiple dataframes from the beginning, instead they are often in a single dataframe with a column to group the different datasets.
+
+Returning to the `trees_mlunguya` dataset, you can see that there is a column called `year`, which denotes when each stem measurement was taken. Imagine we want to perform the basal area calculation on each year in the dataset, then find out whether the mean basal area of stems in the plots has changed over the years. We can do this using a `for()` loop.
+
+First, separate `trees_mlunguya` into a list of dataframes, each based on the contents of the year column:
+```{r}
+trees_mlunguya_list <- split(trees_mlunguya, trees_mlunguya$year)
+
+# I really think these worflows should be updated. The following uses the tidyverse and seems to produce an equivalent result:
+trees_mlunguya_list2 <- trees_mlunguya %>% nest_by(year)
+```
+
+Then, run a for() loop to fill an empty list with the mean basal area of each year:
+```{r}
+# Create an empty list
+mean_ba_list <- list()
+
+for( i in 1:length(trees_mlunguya_list) ){
+	ba <- basal.area(trees_mlunguya_list[[i]]$diam)
+	mean_ba <- mean(ba)
+	year <- mean(trees_mlunguya_list[[i]]$year)
+	dat <- data.frame(year, mean_ba)
+	mean_ba_list[[i]] <- dat
+}
+```
+
+
+
+
+
+
