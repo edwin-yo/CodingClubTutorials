@@ -365,6 +365,193 @@ to functional programming</a> tutorial. Most of the content is lifted
 directly from there with minor modifications and updates from my part.
 Not everything in the tutorial should be expected to be replicated
 here.</p>
+<p>The data contains information on tree stems surveyed in four 1 Ha
+plots at fieldsites around southern Africa. trees_bicuar contains data
+for trees in Bicuar National Park in southwest Angola, and
+trees_mlunguya contains data for trees in southern Mozambique. Each tree
+stem &gt;5 cm trunk diameter was measured for tree height and trunk
+diameter, and identified to species.</p>
+</div>
+<div id="building-a-simple-function" class="section level2">
+<h2>Building a simple function</h2>
+<pre class="r"><code>trees_bicuar &lt;- vroom::vroom(&#39;trees_bicuar.csv&#39;)</code></pre>
+<pre><code>## Rows: 2237 Columns: 12
+## ── Column specification ────────────────────────────────────────────────────────
+## Delimiter: &quot;,&quot;
+## chr (8): plotcode, stem_id, family, genus, species, gen_sp, group, height_me...
+## dbl (4): diam, pom, height, year
+## 
+## ℹ Use `spec()` to retrieve the full column specification for this data.
+## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.</code></pre>
+<pre class="r"><code>trees_mlunguya &lt;- vroom::vroom(&#39;trees_mlunguya.csv&#39;)</code></pre>
+<pre><code>## Rows: 4911 Columns: 11
+## ── Column specification ────────────────────────────────────────────────────────
+## Delimiter: &quot;,&quot;
+## chr (6): plotcode, family, genus, species, gen_sp, group
+## dbl (4): stem_id, diam, pom, year
+## lgl (1): height
+## 
+## ℹ Use `spec()` to retrieve the full column specification for this data.
+## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.</code></pre>
+<p>The basic syntax for creating a function looks like this:</p>
+<pre class="r"><code>example.fn &lt;- function(x,y){
+  # Perform an action using x and y
+  x + y
+}
+example.fn(x = 1, y = 2)</code></pre>
+<pre><code>## [1] 3</code></pre>
+<p>Note that the convention is to name a function using <code>.</code>
+rather than <code>_</code> which is normally used to define data
+objects. This isn’t a rule, but it’s best to stick to the conventions
+used by other programmers to keep things consistent.</p>
+<p>We can also define a function that calculates the basal area of each
+stem in m^2 from the diameter, which is in cm. The basal area is the
+cross-sectional area of the tree trunk if it was cut parallel to the
+ground.</p>
+<pre class="r"><code>basal.area &lt;- function(x){
+  (pi*(x)^2)/40000
+}</code></pre>
+<p>This function has one input, x. x can be a numeric vector, or a
+numeric column in a dataframe, basically anything that doesn’t cause an
+error in the body of the function. The body of the function multiplies
+x^2 by pi, then divides by 40,000, giving the basal area as an
+output.</p>
+<p>Test the function by supplying the diameter column from the Bicuar
+tree stem data (trees_bicuar$diam) to see what the output is:</p>
+<pre class="r"><code>#basal.area(x = trees_bicuar$diam)</code></pre>
+<p>Function arguments don’t need to be called x and y, they can be any
+character string, for example, the function below works identically to
+the one above, only x is now referred to as dbh:</p>
+<pre class="r"><code>basal.area &lt;- function(dbh){
+    (pi*(dbh)^2)/40000
+}</code></pre>
+<p>Additionally, you can add a indeterminate number of extra arguments
+using the <code>...</code> operator. Imagine that we want to extend our
+<code>basal.area()</code> function so that it can compute the combined
+basal area of multiple vectors of diameter measurements, e.g. from
+multiple sites:</p>
+<pre class="r"><code>basal.area &lt;- function(...){
+  (pi*c(...)^2)/40000
+}
+#basal.area(trees_bicuar$diam, trees_mlunguya$diam)</code></pre>
+<p>Just like a normal function, the output of basal.area() can be
+assigned to a new object, for example, as a new column in
+trees_bicuar:</p>
+<pre class="r"><code>trees_bicuar$ba &lt;- basal.area(dbh = trees_bicuar$diam)</code></pre>
+<p>Writing functions for simple operations like the example above is
+useful if you want to perform the same operation multiple times
+throughout a script and don’t want to copy and paste the same code
+(e.g. (pi*(dbh)^2)/40000) multiple times, this reduces the chances that
+you will make a typo when copying and pasting.</p>
+</div>
+<div id="functions-in-loops" class="section level2">
+<h2>Functions in loops</h2>
+<p>We’ve seen how to write a function and how they can be used to create
+concise re-usable operations that can be applied multiple times in a
+script without having to copy and paste, but where functions really come
+into their own is when combined with looping procedures. Loops serve to
+run the same operation on a group of objects, further minimising the
+replication of code.</p>
+<p>Loops come in two main variants in R, <code>for()</code> loops and
+<code>while()</code> loops. In this workshop we will focus on
+<code>for()</code> loops, which are generally easier to read than
+<code>while()</code> loops, and can be used to perform the same sorts of
+actions. <code>while()</code> loops are used mainly when the user wants
+to perform an action a set number of times, whereas a <code>for()</code>
+loop is generally used when the user wants to perform an action on a
+named set of objects.</p>
+<p>A <code>for()</code> loop iterates through a number of items, most
+commonly stored as a list, and performs some action equally on each
+item. It can drastically reduce the amount of copying and pasting.</p>
+<p>The basic syntax for creating a <code>for()</code> loop looks like
+this:</p>
+<pre class="r"><code>while(FALSE){
+  for(i in list){
+      # PERFORM SOME ACTION
+  }
+}</code></pre>
+<p>Imagine you have multiple field sites, each with four 1 Ha plots with
+the tree stem measurements described earlier. The data for each
+fieldsite is contained in a different dataframe, e.g. trees_bicuar and
+trees_mlunguya. If we wanted to calculate the basal area for all stems
+at both sites, we could run:</p>
+<pre class="r"><code>trees_bicuar$ba &lt;- basal.area(trees_bicuar$diam)
+trees_mlunguya$ba &lt;- basal.area(trees_mlunguya$diam)</code></pre>
+<p>The above seems fine for now, but what if we had 100 field sites
+instead of just two? In that case, you can use a <code>for()</code>
+loop. First, we have to create a list of dataframes to perform the loop
+on. There are many ways of doing this, but the simplest way is:</p>
+<pre class="r"><code>trees &lt;- list(`trees_bicuar` = trees_bicuar, &#39;trees_mlunguya&#39; = trees_mlunguya)</code></pre>
+<p>This makes a list called trees, where each element in the list is a
+dataframe. List items within a list can be accessed using double square
+brackets, e.g. <code>trees[[1]]</code> selects the first list item, the
+dataframe for <code>trees_bicuar</code>. We can take advantage of this
+method of list indexing using square brackets when we construct our
+<code>for()</code> loop:</p>
+<pre class="r"><code>for( i in 1:length(trees) ){
+    trees[[i]]$ba &lt;- basal.area(trees[[i]]$diam)
+}</code></pre>
+<p>The above example illustrates how loops work, but often, data are not
+separated into multiple dataframes from the beginning, instead they are
+often in a single dataframe with a column to group the different
+datasets.</p>
+<p>Returning to the <code>trees_mlunguya</code> dataset, you can see
+that there is a column called <code>year</code>, which denotes when each
+stem measurement was taken. Imagine we want to perform the basal area
+calculation on each year in the dataset, then find out whether the mean
+basal area of stems in the plots has changed over the years. We can do
+this using a <code>for()</code> loop.</p>
+<p>First, separate <code>trees_mlunguya</code> into a list of
+dataframes, each based on the contents of the year column:</p>
+<pre class="r"><code>trees_mlunguya_list &lt;- split(trees_mlunguya, trees_mlunguya$year)
+
+# I really think these worflows should be updated. The following uses the tidyverse and seems to produce an equivalent result:
+trees_mlunguya_list2 &lt;- trees_mlunguya %&gt;% nest_by(year)</code></pre>
+<p>Then, run a for() loop to fill an empty list with the mean basal area
+of each year:</p>
+<pre class="r"><code># Create an empty list
+mean_ba_list &lt;- list()
+
+for( i in 1:length(trees_mlunguya_list) ){
+    ba &lt;- basal.area(trees_mlunguya_list[[i]]$diam)
+    mean_ba &lt;- mean(ba)
+    year &lt;- mean(trees_mlunguya_list[[i]]$year)
+    dat &lt;- data.frame(year, mean_ba)
+    mean_ba_list[[i]] &lt;- dat
+}</code></pre>
+<p>During each iteration, this loop creates a number of intermediate
+data objects (<code>ba</code>, <code>mean_ba</code>, <code>year</code>),
+and eventually returns a dataframe (<code>dat</code>) with a single row
+and two columns, one for year and one for mean basal area. Each of these
+dataframes are then stored as a list item in the new list
+<code>mean_ba_list</code>.</p>
+<p>Of course, this intermediate calculation could be stored in it’s own
+custom function:</p>
+<pre class="r"><code>ba.mean.year &lt;- function(dbh, year){
+    data.frame(
+        mean_ba = mean(basal.area(dbh)),
+        year = mean(year)
+    )    
+}
+
+ba.mean.year(trees_mlunguya_list[[1]]$diam, trees_mlunguya_list[[1]]$year)</code></pre>
+<pre><code>##      mean_ba year
+## 1 0.01766951 2006</code></pre>
+<p>And this new function can be used in the for loop:</p>
+<pre class="r"><code>for( i in 1:length(trees_mlunguya_list) ){
+    mean_ba_list[[i]] &lt;- ba.mean.year(
+        trees_mlunguya_list[[i]]$diam,
+        trees_mlunguya_list[[i]]$year)
+}</code></pre>
+<p>Note that this <code>for()</code> loop now contains a custom function
+(<code>ba.mean.year()</code>), which itself contains a custom function
+(<code>basal.area()</code>), demonstrating that there is really no limit
+to the complexity you can create with functional programming tools like
+loops and function calls. You can even have loops within loops, and
+loops in functions!</p>
+</div>
+<div id="functions-with-lapply-family" class="section level2">
+<h2>Functions with <code>lapply()</code> family</h2>
 </div>
 
 
