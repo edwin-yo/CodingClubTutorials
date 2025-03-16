@@ -1,0 +1,57 @@
+---
+title: "CC Model Design Master"
+author: "Edwin Yánez"
+date: "2025-03-16"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Purpose
+This is a follow-along document reporting my engagement with Coding Club's [Intro to model design
+](https://ourcodingclub.github.io/tutorials/model-design/index.html) tutorial. Not everything in the tutorial should be expected to be replicated here.
+
+## 1. Learn what a statistical model is
+In order to answer research questions, we require statistical tests of the relationships in our data. In modern ecology and other fields, models are designed to fit the structure of data and to appropriately test the questions that we have as researchers. Thus, the first step to any data analysis is figuring out what your research question is. **Without a research question, there is no point in trying to conduct a statistical test. So let’s pause here and figure out the research question for our tutorial today**.
+
+## 2. The research question
+In this tutorial, we will work with part of the long-term plant cover dataset from the Toolik Lake Field Station. These data (remember the word data is plural, thus data are … not data is …!) are plant composition data collected over four years across five sites over time in Arctic tundra in Northern Alaska. A simple question we might ask with these data is: how has the species richness changed in these plots over time?
+
+### Question 1: How has plant species richness changed over time at Toolik Lake?
+Once we have figured out our research question, we next need to figure out our hypothesis. To come up with a hypothesis, we need to learn something about this system. To start us off today, we will suggest a hypothesis for you: plant species richness is increasing over time. We might expect this as these tundra plots might be undergoing warming and warming might lead to increased plant species richness in tundra plant communities (see [this paper](https://doi.org/10.1038/s41586-018-0005-6) for more on this topic).
+
+**Hypothesis 1: Plant species richness has increased over time at Toolik Lake**. (Remember to phrase your hypothesis in the past tense, as these data represent changes that have already occurred and remember that results are always written in the past tense.)
+
+Now that we have a hypothesis, it is good practice to also write a null hypothesis. What are the hypotheses that we are testing between here? For example, a null hypothesis for these data and this question might be:
+
+**Null Hypothesis: Plant species richness has not changed over time at Toolik Lake**.
+
+We might also have an alternative hypothesis:
+
+**Hypothesis 2: Plant species richness has decreased over time at Toolik Lake**.
+
+Toolik Lake Station is in Alaska, a place that has been warming at rates higher than the rest of the world, so we might also wonder how temperature influences the plant communities there, in particular, their richness. So, we pose a second question:
+
+### Question 2: How does mean annual temperature influence plant species richness?
+**Hypothesis 1: Higher temperatures correspond with higher species richness**.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
