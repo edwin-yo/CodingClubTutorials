@@ -336,24 +336,178 @@ Assumptions not accounted for:
 + We have not accounted for spatial autocorrelation in the data - whether more closely located plots are more likely to show similar responses than farther away plots.
 + We have not accounted for temporal autocorrelation in the data - whether the influence of prior years of data are influencing the data in a given year.
 
+## 9. Random slopes versus random intercepts lme4
+We can now think about having random slopes and random intercepts. For our question, how does temperature influence species richness, we can allow each plot to have it’s own relationship with temperature.
+```{r}
+# Commented out because it does not converge.
+if (FALSE){
+  plant_m_rs <- lmer(Richness ~ Mean.Temp + (Mean.Temp|Site/Block/Plot) + (1|Year), data = toolik_plants)
+  summary(plant_m_rs)
+}
+```
 
+Check out the summary outputs and the messages we get. This model is not converging and we shouldn’t trust its outputs: the model structure is too complicated for the underlying data, so now we can simplify it.
 
+If the code is running for a while, feel free to click on the “Stop” button and continue with the tutorial, as the model is not going to converge.
+```{r}
+plant_m_rs <- lmer(Richness ~ Mean.Temp + (Mean.Temp|Site) + (1|Year), data = toolik_plants)
+summary(plant_m_rs)
+```
 
+This time the model converges, but keep in mind that we are ignoring the hierarchical structure below “Site”, and therefore violating about assumption about independent data points (data below the “Site” level are actually grouped). But we will use it to show you what random-slopes models look like.
 
+We can visualise the results:
+```{r}
+plant.fe.effects <- plot_model(plant_m_rs, show.values = TRUE)
+print(plant.fe.effects)
+```
 
+```{r}
+plant.re.effects <- plot_model(plant_m_rs, type = 're', show.values = TRUE)
+print(plant.re.effects)
+```
 
+To get a better idea of what the random slopes and intercepts are doing, we can visualise your model predictions. We will use the `ggeffects` package to calculate model predictions and plot them. First, we calculate the overall predictions for the relationship between species richness and temperature. Then, we calculate the predictions for each plot, thus visualising the among-plot variation. Note that the second graph has both freely varying slopes and intercepts (i.e., they’re different for each plot).
+```{r}
+ggpredict(plant_m_rs, terms = c('Mean.Temp')) %>% plot()
+```
 
+```{r}
+ggpredict(plant_m_rs, terms = c('Mean.Temp', 'Site'), type = 'random') %>%
+  plot()+
+  theme(legend.position = 'bottom')
+```
 
+### An important note about honest graphs!
+Interestingly, the default options from the `ggpredict()` function set the scale differently for the y axes on the two plots. If you just see the first plot, at a first glance you’d think that species richness is increasing a lot as temperature increases! But take note of the y axis: it doesn’t actually start at zero, thus the relationship is shown to be way stronger than it actually is.
 
+We can manually plot the predictions to overcome this problem.
+```{r}
+# Overall predictions - note that we have specified just mean temperature as a term
+predictions <- ggpredict(plant_m_rs, terms = c('Mean.Temp'))
 
+pred_plot1 <- ggplot(predictions, aes(x, predicted))+
+  geom_line()+
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high), alpha = .1)+
+  scale_y_continuous(limits = c(0, 35))+
+  labs(x = '\nMean annual temperature', y = 'Predicted species richness\n')
+print(pred_plot1)
+```
 
+The relationship between temperature and species richness doesn’t look that strong anymore! In fact, we see pretty small increases in species richness as temperature increases. What does that tell you about our hypothesis?
 
+Now we can do the same, but this time taking into account the random effect.
+```{r}
+# Predictions for each grouping level (here plot which is a random effect)
+# re stands for random effect
+predictions_rs_ri <- ggpredict(plant_m_rs, terms = c('Mean.Temp', 'Site'), type = 'random')
 
+pred_plot_2 <- ggplot(predictions_rs_ri, aes(x, predicted, color = group))+
+  stat_smooth(method = 'lm', se = TRUE)+
+  scale_y_continuous(limits = c(0, 35))+
+  theme(legend.position = 'bottom')+
+  labs(x = '\nMean annual temperature', y = 'Predicted species richness\n')
+plot(pred_plot_2)
+```
 
+Just for the sake of really seeing the random intercepts and random slopes, here is a zoomed in version), but note that when preparing graphs for reports or publications, your axes should start at zero to properly visualise the magnitude of the shown relationship.
+```{r}
+pred_plot3 <- ggplot(predictions_rs_ri, aes(x, predicted, color = group))+
+  stat_smooth(method = 'lm', se = TRUE)+
+  theme(legend.position = 'bottom')+
+  labs(
+    x = "\nMean annual temperature",
+    y = "Predicted species richness\n"
+  )
+plot(pred_plot3)
+```
 
+## 10. Hierarchical models using `MCMCglmm`
+Let’s take our `lme4` model and explore what that model structure looks like in MCMCglmm. MCMCglmm fits Generalised Linear Mixed-effects Models using a Markov chain Monte Carlo approach under a Bayesian statistical framework.
 
+To learn more about hierarchical models using MCMCglmm, you can check out our tutorial here, which has more details on the different model structures you can have and also provides an explanation of what priors are and how to set them in MCMCglmm.
 
+For now, we can proceed knowing that just like in lme4, in MCMCglmm, we can add random and fixed effects to account for the structure of the data we are modelling. In MCMCglmm, there is greater flexibility in terms of specifying priors - that is, you can give your model additional information that is then taken into account when the model runs. For example, there might be some lower and upper bound limit for our response variable - e.g. we probably won’t find more than 1000 species in one small plant plot and zero is the lowest species richness can ever be.
 
+Let’s explore how to answer our questions using models in MCMCglmm! We can gradually build a more complex model, starting with a Site random effect.
+```{r eval=FALSE, include=FALSE}
+plant_mcmc <- MCMCglmm(
+  Richness ~ I(Year - 2007),
+  random = ~Site,
+  family = 'poisson',
+  data = toolik_plants
+)
+```
+
+But we have a different problem: the model doesn’t converge.
+
+The MCMC_dummy warning message is just referring to the fact that the data, toolik_plants, has the characteristics of a tibble, a data format for objects that come out of a dplyr pipe. So that’s not something to worry about now, the real problem is that the model can’t converge when Site is a random effect. We might not have enough sites or enough variation in the data.
+
+Let’s explore how the model looks if we include Block and Plot as random effects (here they are random intercepts).
+```{r}
+plant_mcmc <- MCMCglmm(
+  Richness ~ I(Year - 2007),
+  random = ~Block + Plot,
+  family = 'poisson',
+  data = toolik_plants
+)
+```
+
+The model has ran, we have seen the many iterations roll down the screen, but what are the results and has the model really worked? Just like with other models, we can use summary() to see a summary of the model outputs.
+
+```{r}
+summary(plant_mcmc)
+```
+
+The posterior mean (i.e., the slope) for the Year term is -0.07 (remember that this is on the logarithmic scale, because we have used a Poisson distribution). So in general, based on this model, species richness has declined over time.
+
+Now we should check if the model has converged. In MCMCglmm, we assess that using trace plots. You want them to look like a fuzzy caterpillar. Sol refers to the fixed effects and VCV to the random effects. Ours really don’t give off that fuzzy caterpillar vibe! So in this case, even though the model ran and we got our estimates, we wouldn’t really trust this model. This model is therefore not really the best model to answer our research question, because we are not accounting for the site effects, or for the fact that the plots are within blocks within sites.
+```{r}
+plot(plant_mcmc$VCV)
+plot(plant_mcmc$Sol)
+```
+
+Let’s see what the MCMCglmm models are like when we estimate changes in the cover of one species - Betula nana, dwarf birch. We can also use a Poisson distribution here, as we can think about plant cover as proportion data, e.g., Betula nana cover say 42% of our sample plot. There might be other suitable distributions like a beta binomial distribution, which we will explore in the sequel to this tutorial, coming to you soon!
+
+We have added code for parameter-expanded priors. You don’t need to worry about the details of those, as in this tutorial we are thinking about the design of the model. These priors will improve model convergence and if you want to find out more about them, you can check out the MCMCglmm tutorial here.
+```{r}
+# Set weakly informative priors
+prior2 <- list(R = list(V = 1, nu = 0.002),
+               G = list(G1 = list(V = 1, nu = 1, alpha.mu = 0, alpha.v = 10000),
+                        G2 = list(V = 1, nu = 1, alpha.mu = 0, alpha.v = 10000),
+                        G3 = list(V = 1, nu = 1, alpha.mu = 0, alpha.v = 10000)))
+
+# Extract just the Betula nana data
+betula <- filter(toolik_plants, Species == "Bet nan")
+
+betula_m <- MCMCglmm(
+  round(Relative.Cover*100) ~ Year,
+  random = ~Site + Block + Plot,
+  family = 'poisson', 
+  prior = prior2,
+  data = betula
+)
+
+summary(betula_m)
+plot(betula_m$VCV)
+plot(betula_m$Sol)
+```
+
+From the summary, we can see that the effect size for year is very small: it doesn’t look like the cover of Betula nana has changed much over the 2008-2012 survey period.
+
+The trace plots for this model are a bit better than the previous one and we have included all three levels of our experimental hierarchy as random intercepts. We have ran these models with the default number of iteratations (13000). Increasing the number of iterations can improve convergence, so that’s something you can explore later if you want (you can increase the iterations by adding nitt = 100000 or a different number of your choice inside the MCMClgmm() code).
+
+### Visualise model outputs
+We can use the package MCMCvis by Casey Youngflesh to plot the results of our Betula nana model.
+```{r}
+MCMCplot(betula_m$Sol)
+MCMCplot(betula_m$VCV)
+```
+
+Sol refers to the fixed effects and VCV to the random effects, so we can see the effect sizes of the different variables we have added to our models. If the credible intervals overlap zero, then those effects are not significant, so we can see here that Betula nana cover hasn’t changed. units refers to the residual variance.
+
+## Conclusions
+Today we have learned that in order to design a statistical model, we first need to think about our questions, the structure in the data we are working with and the types of assumptions that we want to make. No model will ever be perfect, but we can use hierarchical models to minimize the assumptions that we are making about our data and to better represent the complex data structures that we often have in ecology and other disciplines. Designing a statistical model can at first seem very overwhelming, but it gets easier over time and in the end, can be one of the most fun bits of ecology, believe it or not! And the more tools you build in your statistical toolkit to help you developing appropriate statistical models, the better you will be able to tackle the challenges that ecological data throw your way! Happy modelling!
 
 
 
