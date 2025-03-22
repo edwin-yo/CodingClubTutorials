@@ -509,7 +509,10 @@ Sol refers to the fixed effects and VCV to the random effects, so we can see the
 ## Conclusions
 Today we have learned that in order to design a statistical model, we first need to think about our questions, the structure in the data we are working with and the types of assumptions that we want to make. No model will ever be perfect, but we can use hierarchical models to minimize the assumptions that we are making about our data and to better represent the complex data structures that we often have in ecology and other disciplines. Designing a statistical model can at first seem very overwhelming, but it gets easier over time and in the end, can be one of the most fun bits of ecology, believe it or not! And the more tools you build in your statistical toolkit to help you developing appropriate statistical models, the better you will be able to tackle the challenges that ecological data throw your way! Happy modelling!
 
+## Extras
+If you are keen, you can now try out the brms package and generate the Stan code for this model. This will help us to start to think about how we can implement hierarchical models using the statistical programming language Stan.
 
+> Important: this bit of the tutorial is skipped as there are references to other courses that I plan to go over at a different time.
 
 
 
