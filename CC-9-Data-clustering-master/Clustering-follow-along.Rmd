@@ -1,0 +1,18 @@
+---
+title: "Introduction to Ordination"
+author: "Edwin Yánez"
+date: "2025-03-20"
+output: 
+  html_document:
+    toc: TRUE
+    toc_float:
+      collapsed: false
+    toc_depth: 4
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Purpose
+This is a follow-along document reporting my engagement with Coding Club's [Introduction to Data Clustering](https://ourcodingclub.github.io/tutorials/data-clustering/index.html) tutorial. Not everything in the tutorial should be expected to be replicated here.
