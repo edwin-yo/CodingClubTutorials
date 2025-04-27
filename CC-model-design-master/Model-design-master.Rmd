@@ -2,11 +2,16 @@
 title: "CC Model Design Master"
 author: "Edwin Yánez"
 date: "2025-03-16"
-output: html_document
+output: 
+  html_document:
+    toc: TRUE
+    toc_float:
+      collapsed: false
+    toc_depth: 4
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, cache = TRUE)
 
 library(tidyverse)
 library(vroom)
@@ -224,6 +229,7 @@ summary(plant_m)
 Notice how we have transformed the Year column - I(Year - 2007) means that the year 2008 will become Year 1 - then your model is estimating richness across the first, second, etc., year from your survey period. Otherwise, if we had kept the years just as 2008, 2009,…, the model would have estimated richness really far back into the past, starting from Year 1, Year 2… Year 1550 up until 2012. This would make the magnitude of the estimates we get wrong. You can experiment to see what happens if we just add in Year - suddenly the slope of species change goes in the hundreds!
 
 **Assumptions made:**
+
 + The data are normally distributed.
 + The data points are independent of one another.
 + The relationship between the variables we are studying is actually linear.
@@ -241,7 +247,14 @@ Model convergence is whether or not the model has worked, whether it has estimat
 
 Checking model convergence can be done at different levels. With parametric models, good practice is to check the residual versus predicted plots. Using Bayesian approaches, there are a number of plots and statistics that can be assessed to determine model convergence. See below and in the Coding Club [MCMCglmm tutorial](https://ourcodingclub.github.io/tutorials/mcmcglmm/index.html). For an advanced discussion of model convergence, check out model [convergence in lme4](https://rdrr.io/cran/lme4/man/convergence.html).
 
-For now, let’s check the residual versus predicted plot for our linear model. By using the ‘plot()’ function, we can plot the residuals versus fitted values, a Q-Q plot of standardised residuals, a scale-location plot (square roots of standardiaed residuals versus fitted values) and a plot of residuals versus leverage that adds bands corresponding to Cook’s distances of 0.5 and 1. Looking at these plots can help you identify any outliers that have huge leverage and confirm that your model has indeed run e.g. you want the data points on the Q-Q plot to follow the one-to-one line.
+For now, let’s check the residual versus predicted plot for our linear model. By using the `plot()` function, we can plot:
+
++ Residuals versus fitted values
++ Q-Q plot of standardised residuals,
++ Scale-location plot (square roots of standardiaed residuals versus fitted values) 
++ Plot of residuals versus leverage that adds bands corresponding to Cook’s distances of 0.5 and 1. 
+
+Looking at these plots can help you identify any outliers that have huge leverage and confirm that your model has indeed run e.g. you want the data points on the Q-Q plot to follow the one-to-one line.
 ```{r}
 plot(plant_m)
 ```
@@ -279,7 +292,7 @@ plot(plant_m_plot3)
 The points on this graph are evenly distributed on both sides of the horizontal line, which is a good sign that the model residuals do not violate the assumptions of the linear models.
 
 Let's visualise the results using the `sjPlot` package!
-```{r}
+```{r, cache = FALSE}
 # set a clean theme for the graphs
 set_theme(base = theme_bw() +
             theme(panel.grid.major.x = element_blank(),
@@ -370,12 +383,14 @@ print(plant.re.effects)
 To get a better idea of what the random slopes and intercepts are doing, we can visualise your model predictions. We will use the `ggeffects` package to calculate model predictions and plot them. First, we calculate the overall predictions for the relationship between species richness and temperature. Then, we calculate the predictions for each plot, thus visualising the among-plot variation. Note that the second graph has both freely varying slopes and intercepts (i.e., they’re different for each plot).
 ```{r}
 ggpredict(plant_m_rs, terms = c('Mean.Temp')) %>% plot()
+
 ```
 
 ```{r}
 ggpredict(plant_m_rs, terms = c('Mean.Temp', 'Site'), type = 'random') %>%
   plot()+
   theme(legend.position = 'bottom')
+
 ```
 
 ### An important note about honest graphs!
@@ -392,6 +407,8 @@ pred_plot1 <- ggplot(predictions, aes(x, predicted))+
   scale_y_continuous(limits = c(0, 35))+
   labs(x = '\nMean annual temperature', y = 'Predicted species richness\n')
 print(pred_plot1)
+
+
 ```
 
 The relationship between temperature and species richness doesn’t look that strong anymore! In fact, we see pretty small increases in species richness as temperature increases. What does that tell you about our hypothesis?
@@ -408,6 +425,16 @@ pred_plot_2 <- ggplot(predictions_rs_ri, aes(x, predicted, color = group))+
   theme(legend.position = 'bottom')+
   labs(x = '\nMean annual temperature', y = 'Predicted species richness\n')
 plot(pred_plot_2)
+
+pred_plot_2 <- ggplot(predictions_rs_ri, aes(x = x, y = predicted, color = group)) +
+  geom_line() +  # Plot the predicted lines
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high, fill = group), alpha = 0.2) +  # Add confidence ribbons
+  scale_y_continuous(limits = c(0, 42)) +
+  theme(legend.position = 'bottom') +
+  labs(x = '\nMean annual temperature', y = 'Predicted species richness\n')
+print(pred_plot_2)
+
+
 ```
 
 Just for the sake of really seeing the random intercepts and random slopes, here is a zoomed in version), but note that when preparing graphs for reports or publications, your axes should start at zero to properly visualise the magnitude of the shown relationship.
@@ -420,17 +447,26 @@ pred_plot3 <- ggplot(predictions_rs_ri, aes(x, predicted, color = group))+
     y = "Predicted species richness\n"
   )
 plot(pred_plot3)
+
+pred_plot_3 <- ggplot(predictions_rs_ri, aes(x = x, y = predicted, color = group)) +
+  geom_line() +  # Plot the predicted lines
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high, fill = group), alpha = 0.2) +  # Add confidence ribbons
+  theme(legend.position = 'bottom') +
+  labs(x = '\nMean annual temperature', y = 'Predicted species richness\n')
+print(pred_plot_3)
+
+
 ```
 
 ## 10. Hierarchical models using `MCMCglmm`
 Let’s take our `lme4` model and explore what that model structure looks like in MCMCglmm. MCMCglmm fits Generalised Linear Mixed-effects Models using a Markov chain Monte Carlo approach under a Bayesian statistical framework.
 
-To learn more about hierarchical models using MCMCglmm, you can check out our tutorial here, which has more details on the different model structures you can have and also provides an explanation of what priors are and how to set them in MCMCglmm.
+To learn more about hierarchical models using MCMCglmm, you can check out our [tutorial here](https://ourcodingclub.github.io/tutorials/mcmcglmm/index.html), which has more details on the different model structures you can have and also provides an explanation of what priors are and how to set them in MCMCglmm.
 
 For now, we can proceed knowing that just like in lme4, in MCMCglmm, we can add random and fixed effects to account for the structure of the data we are modelling. In MCMCglmm, there is greater flexibility in terms of specifying priors - that is, you can give your model additional information that is then taken into account when the model runs. For example, there might be some lower and upper bound limit for our response variable - e.g. we probably won’t find more than 1000 species in one small plant plot and zero is the lowest species richness can ever be.
 
 Let’s explore how to answer our questions using models in MCMCglmm! We can gradually build a more complex model, starting with a Site random effect.
-```{r eval=FALSE, include=FALSE}
+```{r eval=FALSE}
 plant_mcmc <- MCMCglmm(
   Richness ~ I(Year - 2007),
   random = ~Site,
@@ -438,6 +474,16 @@ plant_mcmc <- MCMCglmm(
   data = toolik_plants
 )
 ```
+
+```{r, eval=FALSE}
+Warning: Unknown or uninitialised column: `family`.
+                       MCMC iteration = 0
+
+ Acceptance ratio for liability set 1 = 0.000133
+Error in MCMCglmm(Richness ~ I(Year - 2007), random = ~Site, family = "poisson",  : 
+  Mixed model equations singular: use a (stronger) prior
+```
+
 
 But we have a different problem: the model doesn’t converge.
 
@@ -469,7 +515,7 @@ plot(plant_mcmc$Sol)
 
 Let’s see what the MCMCglmm models are like when we estimate changes in the cover of one species - Betula nana, dwarf birch. We can also use a Poisson distribution here, as we can think about plant cover as proportion data, e.g., Betula nana cover say 42% of our sample plot. There might be other suitable distributions like a beta binomial distribution, which we will explore in the sequel to this tutorial, coming to you soon!
 
-We have added code for parameter-expanded priors. You don’t need to worry about the details of those, as in this tutorial we are thinking about the design of the model. These priors will improve model convergence and if you want to find out more about them, you can check out the MCMCglmm tutorial here.
+We have added code for parameter-expanded priors. You don’t need to worry about the details of those, as in this tutorial we are thinking about the design of the model. These priors will improve model convergence and if you want to find out more about them, you can check out the MCMCglmm tutorial [here](https://ourcodingclub.github.io/tutorials/mcmcglmm/index.html).
 ```{r}
 # Set weakly informative priors
 prior2 <- list(R = list(V = 1, nu = 0.002),
@@ -489,6 +535,7 @@ betula_m <- MCMCglmm(
 )
 
 summary(betula_m)
+par(mfrow = c(2, 2), mar = c(4, 4, 2, 1))  # Creates a 2x2 grid with compact margins
 plot(betula_m$VCV)
 plot(betula_m$Sol)
 ```
