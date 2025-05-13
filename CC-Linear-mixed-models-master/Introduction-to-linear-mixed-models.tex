@@ -1793,17 +1793,36 @@ top-down strategy and goes as follows:
 \def\labelenumi{\arabic{enumi}.}
 \tightlist
 \item
-  fit a full model (he even recommends ``beyond optimal'' i.e.~more
-  complex than you'd expect or want it to be)
+  fit a \textbf{full model} (he even recommends ``beyond optimal''
+  i.e.~more complex than you'd expect or want it to be)
 \item
-  sort out the random effects structure (use REML likelihoods or REML
-  AIC or BIC)
+  sort out the \textbf{random effects structure} (use \texttt{REML}
+  likelihoods or \texttt{REML} AIC or BIC)
 \item
-  sort out fixed effects structure (either use REML the F-statistic or
-  the t-statistic or compare nested ML models - keep your random effects
-  constant)
+  sort out \textbf{fixed effects structure} (either use \texttt{REML}
+  the F-statistic or the t-statistic or compare nested \texttt{ML}
+  models - keep your random effects constant)
 \item
-  once you arrive at the final model present it using REML estimation
+  once you arrive at the \textbf{final model present it using
+  \texttt{REML} estimation}
 \end{enumerate}
+
+\textbf{NOTE}: At the risk of sounding like a broken record: I think
+it's best to decide on what your model is based on biology/ecology/data
+structure etc. than through following model selection blindly.
+Additionally, just because something is non-significant doesn't
+necessarily mean you should always get rid of it.
+
+\subsection{THE END}\label{the-end}
+
+\textbf{Well done for getting through this!} As you probably gather,
+mixed effects models can be a bit tricky and often there isn't much
+consensus on the best way to tackle something within them. The coding
+bit is actually the (relatively) easy part here. Be mindful of what you
+are doing, prepare the data well and things should be alright.
+
+Keen to take your modelling skills to the next level? If you want to
+learn hierarchical spatial modelling and accounting for spatial
+autocorrelation, \textbf{check out our tutorial on INLA}!
 
 \end{document}
