@@ -10,9 +10,8 @@ output:
     toc_depth: 4
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, cache = TRUE)
-
+```{r setup, message=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(vroom)
 library(lme4)
@@ -490,7 +489,7 @@ But we have a different problem: the model doesn’t converge.
 The MCMC_dummy warning message is just referring to the fact that the data, toolik_plants, has the characteristics of a tibble, a data format for objects that come out of a dplyr pipe. So that’s not something to worry about now, the real problem is that the model can’t converge when Site is a random effect. We might not have enough sites or enough variation in the data.
 
 Let’s explore how the model looks if we include Block and Plot as random effects (here they are random intercepts).
-```{r}
+```{r, cache=TRUE}
 plant_mcmc <- MCMCglmm(
   Richness ~ I(Year - 2007),
   random = ~Block + Plot,
@@ -516,7 +515,7 @@ plot(plant_mcmc$Sol)
 Let’s see what the MCMCglmm models are like when we estimate changes in the cover of one species - Betula nana, dwarf birch. We can also use a Poisson distribution here, as we can think about plant cover as proportion data, e.g., Betula nana cover say 42% of our sample plot. There might be other suitable distributions like a beta binomial distribution, which we will explore in the sequel to this tutorial, coming to you soon!
 
 We have added code for parameter-expanded priors. You don’t need to worry about the details of those, as in this tutorial we are thinking about the design of the model. These priors will improve model convergence and if you want to find out more about them, you can check out the MCMCglmm tutorial [here](https://ourcodingclub.github.io/tutorials/mcmcglmm/index.html).
-```{r}
+```{r, cache=TRUE}
 # Set weakly informative priors
 prior2 <- list(R = list(V = 1, nu = 0.002),
                G = list(G1 = list(V = 1, nu = 1, alpha.mu = 0, alpha.v = 10000),

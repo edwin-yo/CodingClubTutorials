@@ -16,7 +16,7 @@ format:
     # code-link: true
     theme: 
       light: cerulean
-      dark: darkly
+      #dark: darkly
   pdf:
     toc: true
     toc-depth: 4       # Use kebab-case and number, not string '4'
