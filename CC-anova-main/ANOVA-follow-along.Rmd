@@ -1,0 +1,400 @@
+---
+title: "ANOVA follow along tutorial"
+author: "Edwin Yánez"
+date: "2025-02-20"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+# Chunk settings ----
+knitr::opts_chunk$set(echo = TRUE)
+
+# Needed libraries ----
+library(tidyverse)
+library(vroom)
+
+# Custom theme ----
+# Data visualisation ----
+
+theme_frogs <- function(){  # Creating a function
+  theme_classic() +  # Using pre-defined theme as base
+  theme(axis.text.x = element_text(size = 12, face = "bold"),  # Customizing axes text      
+        axis.text.y = element_text(size = 12, face = "bold"),
+        axis.title = element_text(size = 14, face = "bold"),  # Customizing axis title
+        panel.grid = element_blank(),  # Taking off the default grid
+        plot.margin = unit(c(0.5, 0.5, 0.5, 0.5), units = "cm"),
+        legend.text = element_text(size = 12, face = "italic"),  # Customizing legend text
+        legend.title = element_text(size = 12, face = "bold"),  # Customizing legend title
+        legend.position = "right",  # Customizing legend position
+        plot.caption = element_text(size = 12))  # Customizing plot caption
+}
+```
+
+# Purpose
+The intend here is to follow along a CC (Coding Club) tutorial on conducting an ANOVA analysis. The end goal of doing this is to brush up on statistical analysis and also get some practice with R. Some section of the tutorial will be quoted here but the tutorial is not expected to be replicated here in its entirety. The full tutorial can be found at <https://ourcodingclub.github.io/tutorials/anova/>.
+
+# Research question: How does frogspawn hatching time vary with temperature?
+According to CC the following is the definition of a research question:
+
+> A research question is an answerable enquiry related to your topic of interest. It should be clear and concise and it should **contain both your response and your explanatory variables**.
+
+Likewise, CC provides a definition for a manipulative experiment:
+
+> A manipulative study is one in which the **experimenter changes something about the experimental study system and studies the effect of this change**.
+
+For context, the experiment involves placing newly-layed frogspaw into 60 containers. From those 60 containers, 3 groups of 20 will be set at different temperatures: 13°C, 18°C, and 25°C. Here, the following is true:
+
++ The **response** variable is `Hatching_time`.
++ The **explanatory variable** is `Temperature`, with **3 levels**: 13°C, 18°C, and 25°C. 
+
+CC explains why one-way ANOVA is the appropriate method:
+
+> We want to compare the means of 3 independent groups (13°C, 18°C and 25°C temperature groups) and we have one continuous response variable (Hatching time) and one categorical explanatory variable (Temperature). **One-way ANOVA is the appropriate analysis!**
+
+# Formulating a hypothesis
+According to CC, a hypothesis and prediction should always be made before carrying out the analysis. Furthermore, CC states:
+
+> A hypothesis is a **tentative answer to a well-framed question**, referring to a mechanistic explanation of the expected pattern. It can be verified via **predictions**, which can be tested by making additional observations and performing experiments.
+
+CC emphasizes that some knowledge about the system under study is necessary. In this case, knowing that optima hatching temperature is between 15-20°C, the following are the hypothesis and prediction:
+
++ **Hypothesis:** Mean frogspawn hatching time will vary with temperature level.
++ **Prediction:** At the highest temperature, 25°C, hatching time will be reduced.
+
+# Data manipulation
+Import the data
+```{r data-import}
+frogs_messy_data <- vroom::vroom('frogs_messy_data.csv')
+glimpse(frogs_messy_data)
+```
+
+The data is given in wide format so cleaning the data involves arranging it into a long format.
+```{r tidying-data}
+# Data Formatting ----
+frogs_tidy_data <- frogs_messy_data %>% 
+  pivot_longer(
+    cols = c(2:4),
+    names_to = 'Temperature',
+    values_to = 'Hatching_time'
+  ) %>% 
+  mutate(
+    Temperature = parse_number(Temperature)
+  ) %>% 
+  select(c(Hatching_time, Temperature)) %>% 
+  drop_na() %>% 
+  mutate(
+    Temp_level = as.factor(
+      case_when(
+        Temperature == 13 ~ 'Low',
+        Temperature == 18 ~ 'Medium',
+        Temperature == 25 ~ 'High'
+        )
+      ),
+    Temperature = as.factor(Temperature)
+  )
+
+## Save the clean data.
+write.csv(frogs_tidy_data, file = 'frogs_tidy_data.csv')
+```
+
+# Visualising distribution with a histogram (really better with a bar plot)
+CC advises to always look at the distribution of the response variable before delving into the statistical analysis because **parametric statistical tests** (within which is ANOVA), assume that continuous dependent variables are normally distributed. This must be checked before one can trust the model's output.
+
+```{r plot-of-distribution-of-the-response-variable}
+frog_histogram <- ggplot(frogs_tidy_data, aes(x = Hatching_time, fill = Temperature))+
+  geom_histogram(stat = 'count')+
+  geom_vline(
+    aes(xintercept = mean(Hatching_time)),
+    colour = 'red', linetype = 'dashed', linewidth = 1
+  )+
+  scale_fill_manual(values = c('#97F7C5', '#4ED973', '#08873D'))+
+  labs(
+    x = '\n Hatching time [days]',
+    y = 'Frequency \n',
+    caption = '\n Fig. 1 Response variable (hatching time) is normally distributed in each treatment group (temperature levels). Red dashed line shows mean hatching time. n = 60.'
+  )+
+  theme_frogs()+
+  guides(fill = guide_legend(title = 'Temperature level [°C]'))
+frog_histogram
+
+my_plot <- ggplot(frogs_tidy_data, aes(x = Hatching_time, fill = Temperature))+
+  geom_bar()+
+  geom_vline(
+    aes(xintercept = mean(Hatching_time)),
+    colour = 'red', linetype = 'dashed', linewidth = 1
+  )+
+  scale_fill_manual(values = c('#97F7C5', '#4ED973', '#08873D'))+
+  labs(
+    x = '\n Hatching time [days]',
+    y = 'Frequency \n',
+    caption = '\n Fig. 1 Response variable (hatching time) is normally distributed in each treatment group (temperature levels). Red dashed line shows mean hatching time. n = 60.'
+  )+
+  theme_frogs()+
+  guides(fill = guide_legend(title = 'Temperature level [°C]'))
+my_plot
+```
+
+# Visualising means with boxplot
+According to CC:
+
+> **A boxplot allows you to look at the variation in a continuous variable across categories**, at the spread of your data and it gives you an idea of what you might find with ANOVA in terms of differences between groups. **If boxes do not overlap, you probably have significant differences between groups, but you must verify this via statistical analysis**.
+
+```{r plot-of-means-with-ggplot}
+frog_boxplot <- ggplot(frogs_tidy_data, aes(x = Temperature, y = Hatching_time, fill = Temperature))+
+  geom_boxplot()+
+  scale_fill_manual(values = c('#97f7c5', '#4ed973', '#08873d'))+
+  labs(
+    x = '\nTemperature level [°C]',
+    y = 'Hatching time [days]',
+    caption = '\n Fig. 2 Frogspawn exposed to lowest temperature [13°C] was the slowest to hatch. n = 60.')+
+  theme_frogs()+
+  theme(
+    legend.position = 'none'
+  )
+frog_boxplot
+```
+
+CC comments that since the boxes don't overlap, this suggests that there is likely a statistically significant difference between groups. ANOVA is needed to tell for sure.
+
+# Running a simple one-way ANOVA
+
+```{r one-way-ANOVA}
+frogs_anova <- aov(Hatching_time ~ Temperature, data = frogs_tidy_data)
+summary(frogs_anova)
+```
+
+A definition of p-value provided by CC:
+
+> A p-value is the probability of seeing a test statistic as big or bigger than the one we actually observed if the null hypothesis is true. **If p < 0.05 we reject the null hypothesis**. However, **the test should be repeated multiple times to be able to confidently accept or reject the null hypothesis**.
+
+More on p-values and their drawbacks in this blog [There is Madness in our methods](https://methodsblog.com/2015/11/26/madness-in-our-methods/).
+
+More details on the analysis can be obtained using a linear model.
+
+```{r linear-model}
+frogs_lm <- lm(Hatching_time ~ Temperature, data = frogs_tidy_data)
+summary(frogs_lm)
+```
+
+# Checking assumptions
+According to CC, there are 3 fundamental assumptions:
+
+a) Data are normally distributed.
+b) Variances are homogeneous.
+c) Observations are independent.
+
+## Data are normally distributed
+To quote CC, this can be accomplished with a **residuals histogram** and a **Normal Q-Q plot**: Normality can be checked via a frequency histogram of the residuals and a quantile plot where the residuals are plotted against the values expected from a normal distribution. Residuals are the deviation of individually measured samples from the mean.
+
+What to look for: **The histogram of residuals should follow a normal (gaussian) distribution and the points in the Q-Q plot should lie mostly on the straight line**.
+
+```{r check-normality}
+par(mfrow = c(1,2))
+hist(frogs_anova$residuals)
+plot(frogs_anova, which = 2)
+```
+
+If the normality asumption is not met, you can log-transform the data into becoming normally distributed or run the non-parametric alternative to ANOVA: Kruskal-Wallis H Test.
+
+## Variances are homogeneous
+**Residuals vs. Fitted plot**: To check that the variation in the residuals is approximately equal across the range of the predictor variable (i.e. check for **homoscedasticity**) we can plot the residuals against the fitted values from the aov model object. 
+
+**Fitted values are what the model predicts for the response variable**.
+
+What to look for: **We want to see a straight red line centered around zero! This means residuals do NOT systematically differ across different groups**.
+
+```{r checking-homoscedasticity}
+plot(frogs_anova, which = 1)
+```
+
+If the homogeneity of variances (homoscedasticity) assumption is violated, run a [Welch F test](https://statistics.laerd.com/statistical-guides/one-way-anova-statistical-guide-4.php) and add into your results section that this assumption was violated.
+
+## Observations are independent
+
+> Two measures are independent if the measurement from one individual gives no indication as to which value the measurement from another individual will produce.
+
+Replicate measures must be equally likely to be sampled from the population of possible values for each level. **This issue needs to be considered at the experimental design stage**. If data are grouped in any way, then more complex designs are needed to account for additional factors. A mixed model approach is advised for hierarchical data. Have a look at the Linear mixed models tutorial for more info.
+
+**Our data does not violate any of the ANOVA assumptions: we can therefore trust our model output!** If assumptions are not 1000% met, no panic! Most of the time it is enough for assumptions to be roughly met.
+
+Now we need to communicate our results.
+
+# Communicating model results with a barplot
+Two ways to communicate results:
+
++ **Verbally**: "Frogspawn mean hatching time significantly varied with temperature **(ANOVA, F = 385.9, df = 2, 57, p = 2.2e-16)**" **OR** "Temperature level had a statistically significant effect on frogspawn mean hatching time (ANOVA, F = 385.9, df = 2, 57, p = 2.2e-16)".
+
+> After running an ANOVA, always report at least your F value, degrees of freedom and p value.
+
++ **Visually**: We can visualise our results with a **boxplot**, as we did above, and with a **barplot of group means with standard error bars**.
+
+Firstly, let’s create a new data frame with the `summarise()` function, which allows you to calculate summary statistics including our **sample size (n)**, **mean hatching time** per temperature level, **standard deviation and standard error values**.
+
+```{r prepare-plot-of-results}
+summary_stats <- frogs_tidy_data %>% 
+  group_by(Temperature) %>% 
+  summarise(
+    n = n(),   # Calculating sample size n
+    average_hatch = mean(Hatching_time),
+    SD = sd(Hatching_time)
+  ) %>% 
+  mutate(
+    SE = SD / sqrt(n)
+  )
+```
+
+> Standard deviation is a measure of the spread of values around the mean. Standard error is a measure of the statistical accuracy of an estimate.
+
+Source on calculating standard deviation and standard error: <https://r-graph-gallery.com/4-barplot-with-error-bar.html>
+
+Producing the plot.
+
+```{r anova-results-plot}
+frog_barplot_1 <- ggplot(data = summary_stats)+
+  geom_col(
+    aes(x = Temperature, y = average_hatch, fill = Temperature), 
+    #stat = 'identity', 
+    colour = 'black'
+    )+
+  geom_errorbar(
+    aes(x = Temperature, ymin = average_hatch - SE, ymax = average_hatch + SE),
+    width = 0.2,
+    colour = 'black',
+    alpha = 0.9,
+    linewidth = 1
+  )+
+  scale_fill_manual(values = c('#97f7c5', '#4ed973', '#08873d'))+
+  labs(
+    x = '\nTemperature level [°C]',
+    y = ' Average hatching time [days]',
+    caption = '\nFig.3 Forgspawn exposed to lowest temperature (13°C) was the slowest to hatch.
+    Non-overlapping S.E. bars indicate significant differences among mean groups. n = 60.'
+  )+
+  theme_frogs()+
+  theme(legend.position = 'none')
+frog_barplot_1
+```
+
+# Bonus
+
+## Adding icons with `phylopic`
+
+```{r set-up-phylopic}
+# Additional libraries.
+library(RCurl)   # For loading icons
+library(rphylopic)   # For using pictures from website phylopic
+library(png)   # For loading pictures in png format
+
+# Animal icon: loading frog logo
+frog <- 'https://images.phylopic.org/images/4d1f2d5f-9683-4f35-8e46-d31d6004be51/raster/447x512.png'
+
+# Link of icon, from phylopic website
+frog_logo <- readPNG(getURLContent(frog))   # Loading the logo into R
+```
+
+Now we re-run the code for the barplot.
+
+```{r use-phylopic}
+frog_barplot_2 <- ggplot(data = summary_stats)+
+  geom_col(
+    aes(x = Temperature, y = average_hatch, fill = Temperature), 
+    colour = 'black'
+    )+
+  geom_errorbar(
+    aes(x = Temperature, ymin = average_hatch - SE, ymax = average_hatch + SE),
+    width = 0.2,
+    colour = 'black',
+    alpha = 0.9,
+    linewidth = 1
+  )+
+  scale_fill_manual(values = c('#97f7c5', '#4ed973', '#08873d'))+
+  add_phylopic(frog_logo, alpha = 1, x = 3, y = 23, height = 5)+   # Adding frog logo to the plot.
+  labs(
+    x = '\nTemperature level [°C]',
+    y = ' Average hatching time [days]',
+    caption = '\nFig.3 Forgspawn exposed to lowest temperature (13°C) was the slowest to hatch.
+    Non-overlapping S.E. bars indicate significant differences among mean groups. n = 60.'
+  )+
+  theme_frogs()+
+  theme(legend.position = 'none')
+frog_barplot_2
+```
+
+## Making a panel with `gridExtra`
+Sometimes it is useful to gather multiple figures in one place. This means that the figure and the caption should be modified.
+
+```{r figures-into-panel}
+library(gridExtra)   # For making panels
+library(ggpubr)   # For data visualisation formatting
+
+# Redoing the plots for the panel ----
+# Frog Histogram:
+frog_histogram_panel <- ggplot(frogs_tidy_data, aes(x = Hatching_time, fill = Temperature))+
+  geom_bar()+
+  geom_vline(
+    aes(xintercept = mean(Hatching_time)),
+    colour = 'red', linetype = 'dashed', linewidth = 1
+  )+
+  scale_fill_manual(values = c('#97F7C5', '#4ED973', '#08873D'))+
+  labs(
+    x = '\n Hatching time [days]',
+    y = 'Frequency \n',
+    caption = '\n Fig. 1'
+  )+
+  theme_frogs()+
+  guides(fill = guide_legend(title = 'Temperature level [°C]'))
+
+# Frog box_plot
+frog_boxplot_panel <- ggplot(frogs_tidy_data, aes(x = Temperature, y = Hatching_time, fill = Temperature))+
+  geom_boxplot()+
+  scale_fill_manual(values = c('#97f7c5', '#4ed973', '#08873d'))+
+  labs(
+    x = '\nTemperature level [°C]',
+    y = 'Hatching time [days]',
+    caption = '\n Fig. 2')+
+  theme_frogs()+
+  theme(
+    legend.position = 'none'
+  )
+
+# Frog barplot panel
+frog_barplot_2_panel <- ggplot(data = summary_stats)+
+  geom_col(
+    aes(x = Temperature, y = average_hatch, fill = Temperature), 
+    colour = 'black'
+    )+
+  geom_errorbar(
+    aes(x = Temperature, ymin = average_hatch - SE, ymax = average_hatch + SE),
+    width = 0.2,
+    colour = 'black',
+    alpha = 0.9,
+    linewidth = 1
+  )+
+  scale_fill_manual(values = c('#97f7c5', '#4ed973', '#08873d'))+
+  add_phylopic(frog_logo, alpha = 1, x = 3, y = 23, height = 5)+   # Adding frog logo to the plot.
+  labs(
+    x = '\nTemperature level [°C]',
+    y = ' Average hatching time [days]',
+    caption = '\nFig.3'
+  )+
+  theme_frogs()+
+  theme(legend.position = 'none')
+
+# Putting together the panel ----
+panel_title <- text_grob('Frogspawn exposed to lowest temperature slowest to hatch',
+                         size = 21, face = 'bold')   # Customizing panel title
+
+panel_caption <- text_grob('Fig. 5 Response variance (hatching time) is normally distributed in
+                           each treatment group (Fig.1); frogspawn exposed to lowest temperature
+                           (13°C) was the slowest to hatch (Fig.2, Fig.3);
+                           Source: Dataset by @ericazaja.', size = 16)   # Customising panel caption
+
+# Making the panel
+frog_panel <- grid.arrange(
+  arrangeGrob(frog_histogram_panel, frog_boxplot_panel, frog_barplot_2_panel, ncol = 3),   # Sets number of panel columns
+  top = panel_title,   # Adding panel tittle
+  bottom = panel_caption   # Adding panel caption
+)
+#ggsave(frog_panel, file = './frog_panel.png', width = 18, height = 9)
+```
+

@@ -1,0 +1,8 @@
+---
+title: "Markdown Master Follow Along"
+author: "Edwin Yánez"
+date: "2025-03-05"
+output: html_document
+---
+
+Not much to do here. I am already very familiar with RMarkdown :).

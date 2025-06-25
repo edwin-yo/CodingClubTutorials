@@ -1,0 +1,1632 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.7.29">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Edwin Yánez">
+<meta name="dcterms.date" content="2025-04-27">
+
+<title>Introduction to linear mixed models</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="Meta-analysis-follow-along_files/libs/clipboard/clipboard.min.js"></script>
+<script src="Meta-analysis-follow-along_files/libs/quarto-html/quarto.js" type="module"></script>
+<script src="Meta-analysis-follow-along_files/libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="Meta-analysis-follow-along_files/libs/quarto-html/popper.min.js"></script>
+<script src="Meta-analysis-follow-along_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="Meta-analysis-follow-along_files/libs/quarto-html/anchor.min.js"></script>
+<link href="Meta-analysis-follow-along_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="Meta-analysis-follow-along_files/libs/quarto-html/quarto-syntax-highlighting-0815c480559380816a4d1ea211a47e91.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="Meta-analysis-follow-along_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="Meta-analysis-follow-along_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="Meta-analysis-follow-along_files/libs/bootstrap/bootstrap-d9504f0f83203c2a394096aa420e929d.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN") {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+</head>
+
+<body class="quarto-light">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+<div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+  <nav id="TOC" role="doc-toc" class="toc-active" data-toc-expanded="99">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#purpose" id="toc-purpose" class="nav-link active" data-scroll-target="#purpose"><span class="header-section-number">1</span> Purpose</a></li>
+  <li><a href="#understanding-what-a-meta-analysis-is" id="toc-understanding-what-a-meta-analysis-is" class="nav-link" data-scroll-target="#understanding-what-a-meta-analysis-is"><span class="header-section-number">2</span> Understanding what a meta-analysis is</a>
+  <ul>
+  <li><a href="#a-meta-analysis-is-a-great-way-to-do-this." id="toc-a-meta-analysis-is-a-great-way-to-do-this." class="nav-link" data-scroll-target="#a-meta-analysis-is-a-great-way-to-do-this."><span class="header-section-number">2.1</span> A meta-analysis is a great way to do this.</a></li>
+  </ul></li>
+  <li><a href="#understanding-what-mcmcglmm-is-and-why-you-might-want-to-use-it" id="toc-understanding-what-mcmcglmm-is-and-why-you-might-want-to-use-it" class="nav-link" data-scroll-target="#understanding-what-mcmcglmm-is-and-why-you-might-want-to-use-it"><span class="header-section-number">3</span> Understanding what MCMCglmm is and why you might want to use it</a></li>
+  <li><a href="#learning-the-difference-between-fixed-versus-random-effects-meta-analyses-and-an-introduction-to-variance" id="toc-learning-the-difference-between-fixed-versus-random-effects-meta-analyses-and-an-introduction-to-variance" class="nav-link" data-scroll-target="#learning-the-difference-between-fixed-versus-random-effects-meta-analyses-and-an-introduction-to-variance"><span class="header-section-number">4</span> Learning the difference between fixed versus random effects meta-analyses and an introduction to variance</a></li>
+  <li><a href="#becoming-familiar-with-the-syntax-and-model-output" id="toc-becoming-familiar-with-the-syntax-and-model-output" class="nav-link" data-scroll-target="#becoming-familiar-with-the-syntax-and-model-output"><span class="header-section-number">5</span> Becoming familiar with the syntax and model output</a>
+  <ul>
+  <li><a href="#assessing-significance" id="toc-assessing-significance" class="nav-link" data-scroll-target="#assessing-significance"><span class="header-section-number">5.1</span> Assessing Significance</a></li>
+  <li><a href="#assessing-model-convergence" id="toc-assessing-model-convergence" class="nav-link" data-scroll-target="#assessing-model-convergence"><span class="header-section-number">5.2</span> Assessing model convergence</a></li>
+  </ul></li>
+  <li><a href="#learning-what-a-prior-is-and-the-absolute-basics-on-how-they-work" id="toc-learning-what-a-prior-is-and-the-absolute-basics-on-how-they-work" class="nav-link" data-scroll-target="#learning-what-a-prior-is-and-the-absolute-basics-on-how-they-work"><span class="header-section-number">6</span> Learning what a prior is, and the (absolute) basics on how they work</a></li>
+  <li><a href="#understanding-parameter-expanded-priors-and-measurement-error" id="toc-understanding-parameter-expanded-priors-and-measurement-error" class="nav-link" data-scroll-target="#understanding-parameter-expanded-priors-and-measurement-error"><span class="header-section-number">7</span> Understanding parameter expanded priors and measurement error</a></li>
+  <li><a href="#now-its-your-turn" id="toc-now-its-your-turn" class="nav-link" data-scroll-target="#now-its-your-turn"><span class="header-section-number">8</span> Now it’s your turn!</a>
+  <ul>
+  <li><a href="#filter-the-data-by-rows-which-have-temperature-as-the-predictor." id="toc-filter-the-data-by-rows-which-have-temperature-as-the-predictor." class="nav-link" data-scroll-target="#filter-the-data-by-rows-which-have-temperature-as-the-predictor."><span class="header-section-number">8.1</span> Filter the data by rows which have temperature as the predictor.</a></li>
+  <li><a href="#plot-the-data-using-a-funnel-plot." id="toc-plot-the-data-using-a-funnel-plot." class="nav-link" data-scroll-target="#plot-the-data-using-a-funnel-plot."><span class="header-section-number">8.2</span> Plot the data using a funnel plot.</a></li>
+  <li><a href="#run-a-basic-random-effects-model.-save-the-posterior-mode." id="toc-run-a-basic-random-effects-model.-save-the-posterior-mode." class="nav-link" data-scroll-target="#run-a-basic-random-effects-model.-save-the-posterior-mode."><span class="header-section-number">8.3</span> Run a basic random effects model. Save the posterior mode.</a></li>
+  <li><a href="#plot-vcv-random-and-sol-fixed-and-check-for-autocorrelation." id="toc-plot-vcv-random-and-sol-fixed-and-check-for-autocorrelation." class="nav-link" data-scroll-target="#plot-vcv-random-and-sol-fixed-and-check-for-autocorrelation."><span class="header-section-number">8.4</span> Plot VCV (random) and Sol (fixed) and check for autocorrelation.</a></li>
+  <li><a href="#increase-the-number-of-iterations-and-burn-in-check-your-priors." id="toc-increase-the-number-of-iterations-and-burn-in-check-your-priors." class="nav-link" data-scroll-target="#increase-the-number-of-iterations-and-burn-in-check-your-priors."><span class="header-section-number">8.5</span> Increase the number of iterations and burn in, check your priors.</a></li>
+  <li><a href="#do-model-checks." id="toc-do-model-checks." class="nav-link" data-scroll-target="#do-model-checks."><span class="header-section-number">8.6</span> Do model checks.</a></li>
+  <li><a href="#interpret-your-model" id="toc-interpret-your-model" class="nav-link" data-scroll-target="#interpret-your-model"><span class="header-section-number">8.7</span> Interpret your model!</a></li>
+  <li><a href="#after-you-read-the-next-section-you-might-want-to-include-some-fixed-effects-or-use-different-variance-structures-for-your-residual-as-well." id="toc-after-you-read-the-next-section-you-might-want-to-include-some-fixed-effects-or-use-different-variance-structures-for-your-residual-as-well." class="nav-link" data-scroll-target="#after-you-read-the-next-section-you-might-want-to-include-some-fixed-effects-or-use-different-variance-structures-for-your-residual-as-well."><span class="header-section-number">8.8</span> After you read the next section, you might want to include some fixed effects, or use different variance structures for your residual as well.</a></li>
+  </ul></li>
+  <li><a href="#sec-Extras" id="toc-sec-Extras" class="nav-link" data-scroll-target="#sec-Extras"><span class="header-section-number">9</span> Extras: fixed effects, posterior mode (BLUPs), non-gaussian families, (co)variance structures</a>
+  <ul>
+  <li><a href="#fixed-effects" id="toc-fixed-effects" class="nav-link" data-scroll-target="#fixed-effects"><span class="header-section-number">9.1</span> Fixed effects</a></li>
+  <li><a href="#calculating-the-posterior-mean-of-the-random-effects-similar-to-best-linear-unbiased-predictors" id="toc-calculating-the-posterior-mean-of-the-random-effects-similar-to-best-linear-unbiased-predictors" class="nav-link" data-scroll-target="#calculating-the-posterior-mean-of-the-random-effects-similar-to-best-linear-unbiased-predictors"><span class="header-section-number">9.2</span> Calculating the posterior mean of the random effects (similar to Best Linear Unbiased Predictors)</a></li>
+  <li><a href="#why-arent-we-calling-them-best-linear-unbiased-predictors" id="toc-why-arent-we-calling-them-best-linear-unbiased-predictors" class="nav-link" data-scroll-target="#why-arent-we-calling-them-best-linear-unbiased-predictors"><span class="header-section-number">9.3</span> Why aren’t we calling them Best Linear Unbiased Predictors?</a></li>
+  <li><a href="#non-gaussian-families" id="toc-non-gaussian-families" class="nav-link" data-scroll-target="#non-gaussian-families"><span class="header-section-number">9.4</span> Non-gaussian families</a></li>
+  <li><a href="#calculating-95-credible-intervals" id="toc-calculating-95-credible-intervals" class="nav-link" data-scroll-target="#calculating-95-credible-intervals"><span class="header-section-number">9.5</span> Calculating 95% Credible Intervals</a></li>
+  <li><a href="#covariance-structures" id="toc-covariance-structures" class="nav-link" data-scroll-target="#covariance-structures"><span class="header-section-number">9.6</span> (Co)variance structures</a></li>
+  </ul></li>
+  <li><a href="#playing-with-figures" id="toc-playing-with-figures" class="nav-link" data-scroll-target="#playing-with-figures"><span class="header-section-number">10</span> Playing with figures</a></li>
+  </ul>
+<div class="quarto-alternate-formats"><h2>Other Formats</h2><ul><li><a href="Meta-analysis-follow-along.pdf"><i class="bi bi-file-pdf"></i>PDF</a></li></ul></div></nav>
+</div>
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Introduction to linear mixed models</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Edwin Yánez </p>
+          </div>
+  </div>
+    
+    <div>
+    <div class="quarto-title-meta-heading">Published</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">April 27, 2025</p>
+    </div>
+  </div>
+  
+    <div>
+    <div class="quarto-title-meta-heading">Modified</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date-modified">May 17, 2025</p>
+    </div>
+  </div>
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="purpose" class="level2" data-number="1">
+<h2 data-number="1" class="anchored" data-anchor-id="purpose"><span class="header-section-number">1</span> Purpose</h2>
+<p>This is a follow-along document reporting my engagement with Coding Club’s <a href="https://ourcodingclub.github.io/tutorials/mcmcglmm/index.html">Meta-analysis for biologists using MCMCglmm</a> tutorial. Not everything in the tutorial is expected to be replicated here.</p>
+<p>The following libraries are used in this tutorial:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(rio)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyverse)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(MCMCglmm)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="understanding-what-a-meta-analysis-is" class="level2" data-number="2">
+<h2 data-number="2" class="anchored" data-anchor-id="understanding-what-a-meta-analysis-is"><span class="header-section-number">2</span> Understanding what a meta-analysis is</h2>
+<p><strong>A meta-analysis is a statistical analysis of results from many individual studies on similar subjects. It provides a much more robust estimate than each individual study alone. It can also reveal patterns and trends across studies, as it allows them to be compared while controlling for sources of <em>non-independence</em> and <em>measurement error</em> inherent in individual studies.</strong></p>
+<p>Comparing studies from different <strong>locations</strong> (e.g.&nbsp;latitude, elevation, hemisphere, climate zone), across <strong>different species</strong> (e.g.&nbsp;with different behaviours or life history traits) or <strong>time periods</strong> (e.g.&nbsp;when the study was done and how long it lasted) introduce sources of <em>non-independence</em> which need to be controlled for when estimating an average effect across all studies.</p>
+<p>However, these sources of non-independence may be of interest to us; for example, perhaps in controlling for latitude, we also discover it explains a large proportion of the variance across studies in the response we are looking at. We can then say that latitude is a good predictor of this response.</p>
+<p><strong>As biologists, we are often looking for predictors (such as the locational differences, species, or time periods mentioned above) of how organisms respond to different treatments, or in environments etc.</strong></p>
+<section id="a-meta-analysis-is-a-great-way-to-do-this." class="level3" data-number="2.1">
+<h3 data-number="2.1" class="anchored" data-anchor-id="a-meta-analysis-is-a-great-way-to-do-this."><span class="header-section-number">2.1</span> A meta-analysis is a great way to do this.</h3>
+<p>Often results used in a meta-analysis have come from previously published studies. This workshop is aimed at teaching you <strong>what to do once you have collected your data</strong>, although the dataset we will use is a good example of one used in a meta-analysis.</p>
+<p>To learn more about how to conduct a systematic review (the pre-cursor to a meta-analysis) check out this: <a href="http://www.prisma-statement.org/"><strong>http://www.prisma-statement.org/</strong></a>. Before continuing with your own meta-analysis, <a href="https://doi.org/10.1186/s12915-017-0357-7"><strong>this paper</strong></a> offers some good advice on what makes a good one.</p>
+<p>For now, let’s move on to the next step…</p>
+</section>
+</section>
+<section id="understanding-what-mcmcglmm-is-and-why-you-might-want-to-use-it" class="level2" data-number="3">
+<h2 data-number="3" class="anchored" data-anchor-id="understanding-what-mcmcglmm-is-and-why-you-might-want-to-use-it"><span class="header-section-number">3</span> Understanding what MCMCglmm is and why you might want to use it</h2>
+<p><strong><code>MCMCglmm</code> fits <em>Generalised Linear Mixed-effects Models</em> using a <em>Markov chain Monte Carlo</em> approach under a <em>Bayesian statistical framework</em>. If some or all of those things make no sense to you, don’t worry – you can still use <code>MCMCglmm</code> without understanding all of this.</strong></p>
+<p>Bayesian statistics sounds scary, but actually it’s more intuitive to understand (in my opinion) than frequentist statistics.</p>
+<p>For example, if I had a coin and asked what is the probability of flipping a head you would say 0.5. This would be the frequency of heads if you flipped the coin a large number of times. This is the basis of <strong>frequentist statistics</strong>: the probability of observing the data conditional on a set of parameter values. This probability is equal to the frequency at which a particular set of data would be observed had the experiment been run (hypothetically) a very large number of times.</p>
+<p>Alternatively, if I had already flipped the coin but did not let you see it, and asked the same question you would still say 0.5. But this is different - the coin is already flipped and it is either a head or a tail with probability zero or one. You have stated 0.5 because you don’t know what actually happened during the coin flip. This is the basis of <strong>Bayesian statistics</strong>: there is a true parameter value out there but you don’t know what it is.</p>
+<p>Bayesian statistics therefore considers the probability of a set of parameter values conditional on observing the data. This probability is characterising subjective uncertainty about the true values.</p>
+<p><strong>In other words, frequentist statistics relies on you sampling the population enough times until you get a true value, but this value can change depending on the number of times you sample from the distribution i.e.&nbsp;data you use can change but you don’t change the parameters in your model. Whereas with Bayesian stats you know there can only be one true distribution regardless of how many times you sample from it, and instead you use your understanding of the system to influence the parameters you choose to describe this distribution in your model, i.e.&nbsp;the data don’t change, it’s your model that changes.</strong></p>
+<p>Furthermore, with <strong>Bayesian statistics</strong>, we include prior probabilities in our models, based on our knowledge of previous situations. In this case, the data are fixed and the parameters are what we change, depending on our prior knowledge, and whether we think it’s likely that a certain outcome will happen.</p>
+<p>Take a look at this schematic of Bayes’ theorem. The output of a <code>MCMCglmm</code> model is a <strong>posterior distribution</strong>, which is a combination of your data, your prior knowledge, and the <a href="https://www.youtube.com/watch?v=XepXtl9YKwc"><strong>likelihood</strong></a> function.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="images/pic01.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="571"></p>
+</figure>
+</div>
+<p>More info on <strong>GLMMs</strong> in <a href="https://www.sciencedirect.com/science/article/pii/S0169534709000196"><strong>this paper</strong></a> . MCMC is a bit more complicated to explain. Most simply put, it’s an algorithm which can draw random samples from a posterior distribution so that we can explore its characteristics. If you would like to understand a bit more about how <a href="https://theclevermachine.wordpress.com/2012/09/24/a-brief-introduction-to-markov-chains/"><strong>Markov chain</strong></a> <a href="https://theclevermachine.wordpress.com/2012/09/22/monte-carlo-approximations/"><strong>Monte Carlo</strong></a> algorithms work, check out these links, and <a href="http://twiecki.github.io/blog/2015/11/10/mcmc-sampling/"><strong>this one</strong></a>.</p>
+</section>
+<section id="learning-the-difference-between-fixed-versus-random-effects-meta-analyses-and-an-introduction-to-variance" class="level2" data-number="4">
+<h2 data-number="4" class="anchored" data-anchor-id="learning-the-difference-between-fixed-versus-random-effects-meta-analyses-and-an-introduction-to-variance"><span class="header-section-number">4</span> Learning the difference between fixed versus random effects meta-analyses and an introduction to variance</h2>
+<p><strong>In this section we are going to consider the difference between a fixed and random effects <em>meta-analysis</em>. This is different to considering the difference between fixed and random <em>effects</em>, although you may learn a little bit about the difference between these, too. As the <code>glmm</code> part of <code>MCMCglmm</code> would suggest, you can also use the package for <em>mixed-effects meta-analyses</em>.</strong></p>
+<p>There is no fundamental distinction between (what we call) fixed effects and random effects in a Bayesian analysis. The key is in understanding how each type of analysis deals with <strong><em>variance</em></strong>.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="images/pic02.png" class="img-fluid quarto-figure quarto-figure-center figure-img"></p>
+</figure>
+</div>
+<p>In these funnel plots, each data point represents a response (slope of change in timing of arrival of birds at their breeding grounds in days/year) from a previously published study. We use 1/SE as a measure of precision. Data points estimated with high standard error will have low precision, and gather towards the bottom of the plot. Vice versa with those estimated with low standard error. Thus, points with low standard error (high precision) should funnel in around the true effect size.</p>
+<p><strong>Fixed effect meta-analyses</strong> assume that any between-observation variance is due to sampling error alone (such that the funnel plot goes to a point as the precision goes to infinity). They are particularly useful when combining experimental studies. For example, <strong><em>do males or females respond more effectively to a treatment</em></strong>? In a meta-analysis of lots of treatments of individuals, we may include sex as a <strong>fixed effect</strong> because we want a definitive answer to this question.</p>
+<p>When we treat an effect as fixed, we believe that knowledge of other effects does not provide information on the likely magnitude of our focal effect. For example, imagine we had five treatments and a control. If we knew that four of the five treatments changed the response by less than 10% then we would not use this information to down weight estimates of the fifth treatment that were more extreme.</p>
+<p>With <strong>random effects meta-analyses</strong>, we do use this information: sampling error is likely to contribute to extreme estimates and so they should be trusted less, i.e.&nbsp;given less <em>statistical weight</em>. Furthermore, some of the between observation variance is allowed to be real and is estimated. This is particularly useful when asking questions with data from wild systems, where we would assume there is natural variation, and we want to find patterns that might help us explain it.</p>
+<p>For example, let’s say we want to know whether migratory birds arrive at their breeding grounds at roughly the same time of year as they did in past decades, or if they now arrive earlier or later as a result of changing climates. We have collected data from many different published studies reporting the number of days earlier or later birds arrive in days/year and days/degree Celsius. This global meta-dataset includes data from many different species, countries, latitudes etc.</p>
+<p>We’ll be using a dataset that contains this information. You’ve already downloaded the dataset <code>migration_metadata.csv</code> from <a href="https://github.com/ourcodingclub/CC-MCMCglmm-MA">this repository</a>, so you can import it into R to have a look. The data come from this elegant <a href="http://onlinelibrary.wiley.com/doi/10.1111/1365-2656.12612/full"><strong>meta-analysis of changes in timing of bird migration</strong></a>.</p>
+<p>Using a meta-analysis we can calculate the average number of days’ difference across all populations for which we have data using the intercept as our only fixed effect. But, we would assume that there will be a huge amount of variation around this average response, and we want to figure out if we can find any patterns in it, maybe across species, locations or life history traits.</p>
+<p>Including species as a random effect will tell us how much variance there is between species. It will also estimate an average response for each, however, it is usually more informative to report the variance between species, rather than the effect of each species separately. In this respect, you might choose to include something as a random effect when there are <strong>lots of categories</strong> (in this case there are lots of species) in your variable, so that you can report the <em>variance</em>.</p>
+</section>
+<section id="becoming-familiar-with-the-syntax-and-model-output" class="level2" data-number="5">
+<h2 data-number="5" class="anchored" data-anchor-id="becoming-familiar-with-the-syntax-and-model-output"><span class="header-section-number">5</span> Becoming familiar with the syntax and model output</h2>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>migrationdata <span class="ot">&lt;-</span> <span class="fu">import</span>(<span class="st">'migration_metadata.csv'</span>) <span class="sc">%&gt;%</span> <span class="fu">as_tibble</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Custom function to get a sense of the data as a dataframe:</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>my_glimpse <span class="ot">&lt;-</span> <span class="cf">function</span>(df, <span class="at">nn =</span> <span class="dv">7</span>) {</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  df <span class="ot">&lt;-</span> df <span class="sc">%&gt;%</span> </span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="fu">across</span>(<span class="fu">everything</span>(), <span class="sc">~</span> <span class="fu">if_else</span>(<span class="fu">is.character</span>(.) <span class="sc">&amp;</span> <span class="fu">str_detect</span>(., <span class="st">"^</span><span class="sc">\\</span><span class="st">s*$"</span>), <span class="cn">NA</span>, .)))</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>  tibble<span class="sc">::</span><span class="fu">tibble</span>(</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">Variable =</span> <span class="fu">names</span>(df),</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">N_distinct =</span> <span class="fu">unname</span>(purrr<span class="sc">::</span><span class="fu">map_int</span>(df, dplyr<span class="sc">::</span>n_distinct)),</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">NAs =</span> <span class="fu">unname</span>(purrr<span class="sc">::</span><span class="fu">map_int</span>(df, <span class="sc">~</span> <span class="fu">sum</span>(<span class="fu">is.na</span>(.)))),</span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">Types =</span> <span class="fu">unname</span>(purrr<span class="sc">::</span><span class="fu">map_chr</span>(df, <span class="sc">~</span> <span class="fu">paste</span>(<span class="fu">class</span>(.), <span class="at">collapse =</span> <span class="st">', '</span>))),</span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>  <span class="at">Content =</span> <span class="fu">unname</span>(purrr<span class="sc">::</span><span class="fu">map_chr</span>(df, <span class="sc">~</span> {</span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>    vals_unique <span class="ot">&lt;-</span> <span class="fu">unique</span>(.)</span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>    n_vals_unique <span class="ot">&lt;-</span> <span class="fu">length</span>(vals_unique)</span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> (n_vals_unique <span class="sc">==</span> <span class="dv">0</span>) </span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>      <span class="st">''</span></span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>    <span class="cf">else</span> <span class="cf">if</span> (n_vals_unique <span class="sc">&gt;</span> nn)</span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>      <span class="fu">paste</span>(<span class="fu">paste0</span>(<span class="fu">head</span>(vals_unique, nn), <span class="at">collapse =</span> <span class="st">', '</span>), <span class="st">',...'</span>)</span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>    <span class="cf">else</span></span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a>      <span class="fu">paste</span>(vals_unique, <span class="at">collapse =</span> <span class="st">', '</span>)</span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a>  }))</span>
+<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>s_migrationdata <span class="ot">&lt;-</span> <span class="fu">my_glimpse</span>(migrationdata)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Have a look at the dataset. Check out the Predictor variable. There are two, time and temperature. For the first part of the tutorial, let’s just look at rows where <strong><em>annual arrival date has been measured over time</em></strong>. To try things on your own afterwards, try replacing time with temperature and following the steps below.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>migrationdata <span class="sc">%&gt;%</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="fu">filter</span>(Predictor <span class="sc">==</span> <span class="st">"year"</span>) <span class="ot">-&gt;</span> migrationtime <span class="co"># this reduces the dataset to one predictor variable, time.</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>s_migrationtime <span class="ot">&lt;-</span> <span class="fu">my_glimpse</span>(migrationtime)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Before we start, let’s plot the data. A <strong>funnel plot</strong> is typically used to visualize data for meta-analyses. This is done by plotting the predictor variable against <code>1/standard error</code> for each data point. This weights each study in the plot by its precision, ultimately giving less weight to studies with high standard error. In this case, <code>Slope</code> is change in arrival date in days/year.</p>
+<div class="cell" data-layout-align="center">
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(migrationtime<span class="sc">$</span>Slope, <span class="fu">I</span>(<span class="dv">1</span><span class="sc">/</span>migrationtime<span class="sc">$</span>SE)) <span class="co"># this makes the funnel plot of slope (rate of change in days/year) and precision (1/SE)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="Meta-analysis-follow-along_files/figure-html/unnamed-chunk-6-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>You can see here that the data seem to funnel in around zero, and that both positive and negative values are well represented, i.e.&nbsp;this study does not suffer from <strong>publication bias</strong>. Let’s look at the plot again, with a more zoomed in view.</p>
+<div class="cell" data-layout-align="center">
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(migrationtime<span class="sc">$</span>Slope, <span class="fu">I</span>(<span class="dv">1</span><span class="sc">/</span>migrationtime<span class="sc">$</span>SE), <span class="at">xlim =</span> <span class="fu">c</span>(<span class="sc">-</span><span class="dv">2</span>,<span class="dv">2</span>), <span class="at">ylim =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">60</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="Meta-analysis-follow-along_files/figure-html/unnamed-chunk-7-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Now, we can see in more detail that the true value seems to funnel in just left of zero, and there is quite a lot of variation around this. <strong>Understanding how the data look is a good place to start.</strong></p>
+<p>Now we’ll run a <strong><em>random effects model</em></strong>, with only the intercept as a fixed effect. The intercept is going to estimate the average change in arrival date across all data points. There are lots of different species, locations and studies in this analysis, and so the random effects are going to estimate whether there is true variation around the intercept and how much of it can be explained by an effect of species, location, or study.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>randomtest <span class="ot">&lt;-</span> <span class="fu">MCMCglmm</span>(Slope <span class="sc">~</span> <span class="dv">1</span>, <span class="at">random =</span> <span class="sc">~</span>Species <span class="sc">+</span> Location <span class="sc">+</span> Study, <span class="at">data =</span> migrationtime)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Unknown or uninitialised column: `family`.</code></pre>
+</div>
+</div>
+<p>We now have a distribution of estimated parameters, because <code>MCMCglmm</code> has run through 13,000 iterations of the model and sampled 1000 of them to provide a <strong>posterior distribution</strong>.</p>
+<p>Let’s look at our summary statistics, <code>summary(randomtest)</code>. The summary shows us a <em>posterior mean</em> for each effect, <em>upper</em> and <em>lower 95% Credible Intervals</em> (not Confidence Intervals) of the distribution, <em>effective sample size</em> and for the fixed effects, a <em>pMCMC value</em>.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(randomtest)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+ Iterations = 3001:12991
+ Thinning interval  = 10
+ Sample size  = 1000 
+
+ DIC: 2519.199 
+
+ G-structure:  ~Species
+
+        post.mean  l-95% CI u-95% CI eff.samp
+Species   0.01186 0.0002241  0.03191    59.77
+
+               ~Location
+
+         post.mean  l-95% CI u-95% CI eff.samp
+Location 0.0002858 1.613e-16 0.001277    94.49
+
+               ~Study
+
+      post.mean l-95% CI u-95% CI eff.samp
+Study   0.03529  0.01381  0.06246     1000
+
+ R-structure:  ~units
+
+      post.mean l-95% CI u-95% CI eff.samp
+units    0.2232   0.2045   0.2404    114.1
+
+ Location effects: Slope ~ 1 
+
+            post.mean l-95% CI u-95% CI eff.samp  pMCMC    
+(Intercept)   -0.2163  -0.2805  -0.1528     1000 &lt;0.001 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
+</div>
+</div>
+<p>Your effective sample size should be quite high <strong>(I usually aim for 1000-2000)</strong>. More complicated models often require more iterations to achieve a comparable effective sample size.</p>
+<section id="assessing-significance" class="level3" data-number="5.1">
+<h3 data-number="5.1" class="anchored" data-anchor-id="assessing-significance"><span class="header-section-number">5.1</span> Assessing Significance</h3>
+<p>We can accept that a <strong>fixed effect</strong> is significant when the credible intervals <strong>do not span zero</strong>, this is because if the posterior distribution spans zero, we cannot be confident <strong>that it is not zero</strong>. While a <code>pMCMC</code> value <em>is</em> reported, it’s better to pay more attention to the credible intervals. Ideally your posterior distribution will also be narrow indicating that that parameter value is known precisely. Here’s an example of a poorly and a well estimated posterior distribution. The red line represents the posterior mean in both cases.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="images/pic03.png" class="img-fluid quarto-figure quarto-figure-center figure-img"></p>
+</figure>
+</div>
+<p>With <strong>random effects</strong>, we estimate the variance. As variance cannot be zero or negative, we accept that a random effect is significant when the distribution of the variance is not pushed up against zero. To check this, we can plot the histogram of each posterior distribution.</p>
+<div class="cell" data-layout-align="center">
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Plot the posterior distribution as a histogram to check for significance and whether it's been well estimated or not</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Variance cannot be zero, and therefore if the mean value is pushed up against zero your effect is not significant</span></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a><span class="co"># The larger the spread of the histogram, the less well estimated the distribution is.</span></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">3</span>))</span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a><span class="fu">hist</span>(<span class="fu">mcmc</span>(randomtest<span class="sc">$</span>VCV)[,<span class="st">"Study"</span>])</span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a><span class="fu">hist</span>(<span class="fu">mcmc</span>(randomtest<span class="sc">$</span>VCV)[,<span class="st">"Location"</span>])</span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a><span class="fu">hist</span>(<span class="fu">mcmc</span>(randomtest<span class="sc">$</span>VCV)[,<span class="st">"Species"</span>])</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="Meta-analysis-follow-along_files/figure-html/unnamed-chunk-10-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow=</span><span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">1</span>)) <span class="co"># Reset the plot panel back to single plots</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Here we can see that the distribution of variance for Location and Species is pressed right up against zero. For a random effect to be significant, we want the tails to be well removed from zero.</p>
+</section>
+<section id="assessing-model-convergence" class="level3" data-number="5.2">
+<h3 data-number="5.2" class="anchored" data-anchor-id="assessing-model-convergence"><span class="header-section-number">5.2</span> Assessing model convergence</h3>
+<p>Now let’s check for model convergence. We do this separately for both fixed and random effects.</p>
+<div class="cell" data-layout-align="center">
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(randomtest<span class="sc">$</span>Sol)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="Meta-analysis-follow-along_files/figure-html/unnamed-chunk-11-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Here you can see the trace and density estimate for the intercept. The trace is like a time series of what your model did while it was running and can be used to assess mixing (or convergence), while the density is like a smoothed histogram of the estimates of the posterior distribution that the model produced for every iteration of the model.</p>
+<p><strong>To make sure your model has converged, the trace plot should look like a fuzzy caterpillar. It looks like the intercept has mixed well.</strong></p>
+<p>If you suspect too much autocorrelation there are a few things you can do.</p>
+<ol type="1">
+<li><p>Increase the number of iterations, default is <code>13000</code> (e.g.&nbsp;<code>nitt = 60000</code>, I often use hundreds of thousands of iterations for more complex models)</p></li>
+<li><p>Increase the burn in, the default here is that <code>MCMCglmm</code> will discount the first 3000 iterations which aren’t as accurate as the model hasn’t converged yet, you can increase this (e.g.&nbsp;<code>burnin = 5000</code>)</p></li>
+<li><p>Increase the thinning interval, the default is 10 (e.g.&nbsp;<code>thin = 30</code>)</p></li>
+<li><p>Think about using a stronger prior, but more on that in a little while.</p></li>
+</ol>
+<p><strong>Note from Jarrod:</strong> In a Markov chain the value at time t is independent of the value at time t-2, <em>conditional</em> on the value at time t-1. This does not mean that each iteration should be independent of the past one; in fact they will be autocorrelated (except in the simplest analyses). You don’t have to ensure stored samples are independent - the key thing is that for the same number of iterations an autocorrelated sample contains less information than a correlated sample. If you want to store a set number of samples (because you don’t want to use your hard drive up) you are then better increasing the thinning interval so the samples you have collected are less correlated.</p>
+<p>For more on diagnostics check this link out: <a href="http://sbfnk.github.io/mfiidd/mcmc_diagnostics.html"><strong>http://sbfnk.github.io/mfiidd/mcmc_diagnostics.html</strong></a>.</p>
+<p>Let’s do the same thing now, but for the variances of the random effects. Depending on your laptop and screen, you may get an error message saying that the plots are too big to display - you can make your plot panel bigger by dragging it upwards and towards the left, then your plots will have enough space to appear.</p>
+<div class="cell" data-layout-align="center">
+<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">2</span>, <span class="dv">2</span>), <span class="at">mar =</span> <span class="fu">c</span>(<span class="dv">4</span>, <span class="dv">4</span>, <span class="dv">2</span>, <span class="dv">1</span>))  <span class="co"># Creates a 2x2 grid with compact margins</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(randomtest<span class="sc">$</span>VCV)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="Meta-analysis-follow-along_files/figure-html/unnamed-chunk-12-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>It looks like some of the variances of the random effects haven’t mixed very well at all. The effective sample size is also very small. Maybe we could improve this by increasing the number of iterations, but because the chain seems to be stuck around zero, it looks like <strong><em>we’ll need to use a stronger prior</em></strong> than the default.</p>
+<p>You can find more information about this in Chapter 8 of the <a href="https://cran.r-project.org/web/packages/MCMCglmm/vignettes/CourseNotes.pdf"><strong>MCMCglmm course notes</strong></a>.</p>
+</section>
+</section>
+<section id="learning-what-a-prior-is-and-the-absolute-basics-on-how-they-work" class="level2" data-number="6">
+<h2 data-number="6" class="anchored" data-anchor-id="learning-what-a-prior-is-and-the-absolute-basics-on-how-they-work"><span class="header-section-number">6</span> Learning what a prior is, and the (absolute) basics on how they work</h2>
+<p><strong>The most difficult part of a Bayesian analysis to understand is how to fit <em>correct priors</em>.</strong></p>
+<p>These are mathematical quantifications of our prior knowledge of what we think the mean and/or variance of a parameter might be. We fit a separate prior for each fixed and random effect, and for the residual.</p>
+<p>We can thus use priors to inform the model which shape we think the posterior distribution will take. In the schematic below, you can see we use our prior beliefs to “drag” the distribution of our likely parameter values towards the left.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="images/pic04.png" class="img-fluid quarto-figure quarto-figure-center figure-img"></p>
+</figure>
+</div>
+<p>It’s very difficult to understand how the prior interacts with the distribution of the data and the likelihood function to give the posterior distribution. That’s why we need complex algorithms like MCMC. However, it’s very difficult to be confident that you have done this correctly, and a key reason why Bayesian statistics can be confusing.</p>
+<p>Firstly, priors can vary in how informative they are. <strong>Weakly informative</strong> priors should be used in situations where we don’t have much prior knowledge and want the data to speak for themselves. The prior won’t drag the posterior distribution away from the parameter values which the data suggest are likely. <strong>Informative</strong> priors provide information that is crucial to the estimation of the model, and will shape the posterior distribution quite a bit.</p>
+<p>In MCMCglmm, each prior follows a similar formula and whether it is strongly or weakly informative depends on the values you include in it.</p>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Note
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p><strong>Note from Jarrod:</strong> Priors don’t have to follow a similar formula: they do in MCMCglmm because only a few prior distributions are allowed for each type of parameter.</p>
+</div>
+</div>
+<p>Be careful when you read that a prior is <strong>uninformative</strong>; there is no such thing as a completely uninformative prior, but explaining why is beyond what’s necessary for this tutorial.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="images/pic05.png" class="img-fluid quarto-figure quarto-figure-center figure-img"></p>
+</figure>
+</div>
+<p>With <code>MCMCglmm</code>, the default prior assumes a normal posterior distribution with very large variance for the fixed effects and a flat improper (weakly informative) prior. For the variances of the random effects, inverse-Wishart priors are implemented. An inverse-Wishart prior contains your variance matrix <em>V</em>, and your degree of believe parameter, <code>nu</code>.</p>
+<p>Below you can see what an inverse Wishart prior looks like in graphical terms. You can see that <code>nu</code> can vary in its strength and level of information. Imagine what each level of <code>nu</code> might do to your data - we might expect that when <code>nu</code> is low, it will be less informative, except for the lowest values of your distribution, which it might drag leftwards slightly.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="images/pic06.png" class="img-fluid quarto-figure quarto-figure-center figure-img"></p>
+</figure>
+</div>
+<p>The more complicated your models become, the more likely it is that you will eventually get an error message, or as we have just seen, that your models will not mix from the beginning. In this case we should use <strong>parameter expanded priors</strong> of our own. The use of parameter expansion means the priors are no longer inverse-Wishart but scaled-F (don’t worry if you don’t understand this!). This is not neceassrily a bad thing, as parameter expanded priors are less easy to specify incorrectly than inverse-Wishart priors.</p>
+<p><strong>However, proceed with caution from this point on!</strong></p>
+</section>
+<section id="understanding-parameter-expanded-priors-and-measurement-error" class="level2" data-number="7">
+<h2 data-number="7" class="anchored" data-anchor-id="understanding-parameter-expanded-priors-and-measurement-error"><span class="header-section-number">7</span> Understanding parameter expanded priors and measurement error</h2>
+<p>Let’s run the model again, but this time we’ll use <strong>parameter expanded priors</strong> for the random effects by including <code>prior = prior1</code>. Each random effect is represented by a G, and the residual is represented by R. The parameter expansion refers to the fact that we have included a prior mean (<code>alpha.mu</code>) and (co)variance matrix (<code>alpha.V</code>) as well as <code>V</code> and <code>nu</code>. For now, <code>alpha.V</code> is going to be 1000, but you can lean more about other variance structures in the <a href="#sec-Extras">Extras</a> section of this tutorial, and in the <a href="https://cran.r-project.org/web/packages/MCMCglmm/vignettes/CourseNotes.pdf"><strong>MCMCglmm course notes</strong></a>, too.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>a <span class="ot">&lt;-</span> <span class="dv">1000</span></span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>prior1 <span class="ot">&lt;-</span> <span class="fu">list</span>(<span class="at">R =</span> <span class="fu">list</span>(<span class="at">V =</span> <span class="fu">diag</span>(<span class="dv">1</span>), <span class="at">nu =</span> <span class="fl">0.002</span>),</span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>               <span class="at">G =</span> <span class="fu">list</span>(<span class="at">G1 =</span> <span class="fu">list</span>(<span class="at">V =</span> <span class="fu">diag</span>(<span class="dv">1</span>), <span class="at">nu =</span> <span class="dv">1</span>, <span class="at">alpha.mu =</span> <span class="dv">0</span>, <span class="at">alpha.V =</span> <span class="fu">diag</span>(<span class="dv">1</span>)<span class="sc">*</span>a),</span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>                        <span class="at">G1 =</span> <span class="fu">list</span>(<span class="at">V =</span> <span class="fu">diag</span>(<span class="dv">1</span>), <span class="at">nu =</span> <span class="dv">1</span>, <span class="at">alpha.mu =</span> <span class="dv">0</span>, <span class="at">alpha.V =</span> <span class="fu">diag</span>(<span class="dv">1</span>)<span class="sc">*</span>a),</span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>                        <span class="at">G1 =</span> <span class="fu">list</span>(<span class="at">V =</span> <span class="fu">diag</span>(<span class="dv">1</span>), <span class="at">nu =</span> <span class="dv">1</span>, <span class="at">alpha.mu =</span> <span class="dv">0</span>, <span class="at">alpha.V =</span> <span class="fu">diag</span>(<span class="dv">1</span>)<span class="sc">*</span>a)))</span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>randomprior <span class="ot">&lt;-</span> <span class="fu">MCMCglmm</span>(Slope <span class="sc">~</span> <span class="dv">1</span>, <span class="at">random =</span> <span class="sc">~</span>Species <span class="sc">+</span> Location <span class="sc">+</span> Study, </span>
+<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a>                        <span class="at">data =</span> migrationtime, <span class="at">prior =</span> prior1, <span class="at">nitt =</span> <span class="dv">60000</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Unknown or uninitialised column: `family`.</code></pre>
+</div>
+</div>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Note
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p><strong>Note:</strong> I have increased the number of iterations as 60000 to improve mixing and effective sample sizes.</p>
+</div>
+</div>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Note
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p><strong>Another note:</strong> I haven’t printed any summary statistics to show in this tutorial. Because of the stochastic nature of MCMC, every time you (re)run a model, your output will be slightly different, so even if you use the same effects in your model, it would always be slightly different to whatever was printed here.</p>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(randomprior)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+ Iterations = 3001:59991
+ Thinning interval  = 10
+ Sample size  = 5700 
+
+ DIC: 2512.182 
+
+ G-structure:  ~Species
+
+        post.mean  l-95% CI u-95% CI eff.samp
+Species   0.01772 2.197e-08  0.04299     2160
+
+               ~Location
+
+         post.mean  l-95% CI u-95% CI eff.samp
+Location  0.003791 8.014e-11  0.01504     3819
+
+               ~Study
+
+      post.mean l-95% CI u-95% CI eff.samp
+Study   0.03785  0.01546  0.06699     4332
+
+ R-structure:  ~units
+
+      post.mean l-95% CI u-95% CI eff.samp
+units    0.2198   0.1998   0.2391     3219
+
+ Location effects: Slope ~ 1 
+
+            post.mean l-95% CI u-95% CI eff.samp  pMCMC    
+(Intercept)   -0.2174  -0.2994  -0.1452     5700 &lt;2e-04 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
+</div>
+</div>
+<p>The effective sample sizes are much bigger now! This is a good sign.</p>
+<div class="cell" data-layout-align="center">
+<div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">2</span>, <span class="dv">2</span>), <span class="at">mar =</span> <span class="fu">c</span>(<span class="dv">4</span>, <span class="dv">4</span>, <span class="dv">2</span>, <span class="dv">1</span>))  <span class="co"># Creates a 2x2 grid with compact margins</span></span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(randomprior<span class="sc">$</span>VCV)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="Meta-analysis-follow-along_files/figure-html/unnamed-chunk-15-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>The models look to have mixed much better too. This is also good.</p>
+<p>Before we do our model checks, I want to control for <strong>sampling error</strong> in the model. This is one of the key reasons we would use <code>MCMCglmm</code> for meta-analysis over another programme or package. You can read the meta-analysis section of the course notes to understand more.</p>
+<p>The key assumption of a meta-analysis is that the between observation variance due to sampling error can be approximated as the standard error squared. We can use a computational trick to allow this in MCMCglmm by fitting <code>idh(SE):units</code> as a random effect and fixing the associated variance at 1. You can see that we now have four random priors, the last of which is fixed at 1.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>prior2 <span class="ot">&lt;-</span> <span class="fu">list</span>(<span class="at">R =</span> <span class="fu">list</span>(<span class="at">V =</span> <span class="fu">diag</span>(<span class="dv">1</span>), <span class="at">nu =</span> <span class="fl">0.002</span>),</span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>               <span class="at">G =</span> <span class="fu">list</span>(<span class="at">G1 =</span> <span class="fu">list</span>(<span class="at">V =</span> <span class="fu">diag</span>(<span class="dv">1</span>), <span class="at">nu =</span> <span class="dv">1</span>, <span class="at">alpha.mu =</span> <span class="dv">0</span>, <span class="at">alpha.V =</span> <span class="fu">diag</span>(<span class="dv">1</span>)<span class="sc">*</span>a),</span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>                        <span class="at">G1 =</span> <span class="fu">list</span>(<span class="at">V =</span> <span class="fu">diag</span>(<span class="dv">1</span>), <span class="at">nu =</span> <span class="dv">1</span>, <span class="at">alpha.mu =</span> <span class="dv">0</span>, <span class="at">alpha.V =</span> <span class="fu">diag</span>(<span class="dv">1</span>)<span class="sc">*</span>a),</span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>                        <span class="at">G1 =</span> <span class="fu">list</span>(<span class="at">V =</span> <span class="fu">diag</span>(<span class="dv">1</span>), <span class="at">nu =</span> <span class="dv">1</span>, <span class="at">alpha.mu =</span> <span class="dv">0</span>, <span class="at">alpha.V =</span> <span class="fu">diag</span>(<span class="dv">1</span>)<span class="sc">*</span>a),</span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a>                        <span class="at">G1 =</span> <span class="fu">list</span>(<span class="at">V =</span> <span class="fu">diag</span>(<span class="dv">1</span>), <span class="at">fix =</span> <span class="dv">1</span>)))</span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a>randomerror2 <span class="ot">&lt;-</span> <span class="fu">MCMCglmm</span>(Slope <span class="sc">~</span> <span class="dv">1</span>, <span class="at">random =</span> <span class="sc">~</span>Species <span class="sc">+</span> Location <span class="sc">+</span> Study <span class="sc">+</span> <span class="fu">idh</span>(SE)<span class="sc">:</span>units, </span>
+<span id="cb21-8"><a href="#cb21-8" aria-hidden="true" tabindex="-1"></a>                         <span class="at">data =</span> migrationtime, <span class="at">prior =</span> prior2, <span class="at">nitt =</span> <span class="dv">60000</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Unknown or uninitialised column: `family`.</code></pre>
+</div>
+</div>
+<div class="cell" data-layout-align="center">
+<div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">2</span>, <span class="dv">2</span>), <span class="at">mar =</span> <span class="fu">c</span>(<span class="dv">4</span>, <span class="dv">4</span>, <span class="dv">2</span>, <span class="dv">1</span>))  <span class="co"># Creates a 2x2 grid with compact margins</span></span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(randomerror2<span class="sc">$</span>VCV)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="Meta-analysis-follow-along_files/figure-html/unnamed-chunk-17-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="Meta-analysis-follow-along_files/figure-html/unnamed-chunk-17-2.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>If you check the summary now, you can see that now we’ve included measurement error, our estimates are much more conserved. Studies with higher standard error have been given lower statistical weight.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(randomerror2)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+ Iterations = 3001:59991
+ Thinning interval  = 10
+ Sample size  = 5700 
+
+ DIC: -1546.628 
+
+ G-structure:  ~Species
+
+        post.mean l-95% CI u-95% CI eff.samp
+Species  0.006181 0.003874 0.008895     4351
+
+               ~Location
+
+         post.mean  l-95% CI u-95% CI eff.samp
+Location  0.005667 1.077e-09  0.01786    395.8
+
+               ~Study
+
+      post.mean l-95% CI u-95% CI eff.samp
+Study     0.015 0.005467  0.02593    873.4
+
+               ~idh(SE):units
+
+         post.mean l-95% CI u-95% CI eff.samp
+SE.units         1        1        1        0
+
+ R-structure:  ~units
+
+      post.mean l-95% CI u-95% CI eff.samp
+units   0.01381  0.01151  0.01601     3829
+
+ Location effects: Slope ~ 1 
+
+            post.mean l-95% CI u-95% CI eff.samp  pMCMC    
+(Intercept)   -0.1804  -0.2356  -0.1277     5635 &lt;2e-04 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
+</div>
+</div>
+<p>Now, we’ll perform our model checks. To do this, we will simulate new data given the same parameter values (variance/co-variance structures (priors)), and then plot it against our real data to make sure they overlap. Remember that in Bayesian analyses, the data remain fixed and it’s the parameters that change. So if we have used the correct parameters, we should be able to use them to simulate new data that look like the original.</p>
+<div class="cell" data-layout-align="center">
+<div class="sourceCode cell-code" id="cb26"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a>xsim <span class="ot">&lt;-</span> <span class="fu">simulate</span>(randomerror2) <span class="co"># reruns 100 new models, based around the same variance/covariance structures but with simulated data.</span></span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(migrationtime<span class="sc">$</span>Slope, <span class="fu">I</span>(<span class="dv">1</span><span class="sc">/</span>migrationtime<span class="sc">$</span>SE))</span>
+<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a><span class="fu">points</span>(xsim, <span class="fu">I</span>(<span class="dv">1</span><span class="sc">/</span>migrationtime<span class="sc">$</span>SE), <span class="at">col =</span> <span class="st">"red"</span>) <span class="co"># here you can plot the data from both your simulated and real datasets and compare them</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="Meta-analysis-follow-along_files/figure-html/unnamed-chunk-19-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Note
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p><strong>Note from Jarrod</strong>: The issue here is complicated - but let’s give it a try. The issue is that the sampling variance for low-precision estimates is actually higher than the <span class="math inline">\(\text{SE}^2\)</span> (i.e.&nbsp;the assumption of a meta-analysis is not met). This means:</p>
+<ol type="a">
+<li>too much weight is still put on low precision studies</li>
+<li>some of the biological variation (the units variance) is overestimated and</li>
+<li>if publication bias is more likely amongst low-precision studies then the mean effect size may be biased.</li>
+</ol>
+</div>
+</div>
+<p>One quick solution is to see if the between observation variance increases more with the reported standard error faster than it should. To do this we can estimate the variance, rather than assume it is 1, and see if the estimate is greater than 1.</p>
+<p>Let’s rerun the model, but this time changing the prior for measurement error so that it is no longer fixed at 1.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">123</span>)</span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>prior3 <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">R =</span> <span class="fu">list</span>(<span class="at">V =</span> <span class="fu">diag</span>(<span class="dv">1</span>), <span class="at">nu =</span> <span class="fl">0.002</span>),</span>
+<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">G =</span> <span class="fu">list</span>(</span>
+<span id="cb27-5"><a href="#cb27-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">G1 =</span> <span class="fu">list</span>(<span class="at">V =</span> <span class="fu">diag</span>(<span class="dv">1</span>), <span class="at">nu =</span> <span class="dv">1</span>, <span class="at">alpha.mu =</span> <span class="dv">0</span>, <span class="at">alpha.V =</span> <span class="fu">diag</span>(<span class="dv">1</span>)<span class="sc">*</span>a),</span>
+<span id="cb27-6"><a href="#cb27-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">G1 =</span> <span class="fu">list</span>(<span class="at">V =</span> <span class="fu">diag</span>(<span class="dv">1</span>), <span class="at">nu =</span> <span class="dv">1</span>, <span class="at">alpha.mu =</span> <span class="dv">0</span>, <span class="at">alpha.V =</span> <span class="fu">diag</span>(<span class="dv">1</span>)<span class="sc">*</span>a),</span>
+<span id="cb27-7"><a href="#cb27-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">G1 =</span> <span class="fu">list</span>(<span class="at">V =</span> <span class="fu">diag</span>(<span class="dv">1</span>), <span class="at">nu =</span> <span class="dv">1</span>, <span class="at">alpha.mu =</span> <span class="dv">0</span>, <span class="at">alpha.V =</span> <span class="fu">diag</span>(<span class="dv">1</span>)<span class="sc">*</span>a),</span>
+<span id="cb27-8"><a href="#cb27-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">G1 =</span> <span class="fu">list</span>(<span class="at">V =</span> <span class="fu">diag</span>(<span class="dv">1</span>), <span class="at">nu =</span> <span class="dv">1</span>, <span class="at">alpha.mu =</span> <span class="dv">0</span>, <span class="at">alpha.V =</span> <span class="fu">diag</span>(<span class="dv">1</span>)<span class="sc">*</span>a)</span>
+<span id="cb27-9"><a href="#cb27-9" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb27-10"><a href="#cb27-10" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb27-11"><a href="#cb27-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-12"><a href="#cb27-12" aria-hidden="true" tabindex="-1"></a>randomerror3 <span class="ot">&lt;-</span> <span class="fu">MCMCglmm</span>(Slope <span class="sc">~</span> <span class="dv">1</span>, <span class="at">random =</span> <span class="sc">~</span>Species <span class="sc">+</span> Location <span class="sc">+</span> Study <span class="sc">+</span> <span class="fu">idh</span>(SE)<span class="sc">:</span>units, </span>
+<span id="cb27-13"><a href="#cb27-13" aria-hidden="true" tabindex="-1"></a>                         <span class="at">data =</span> migrationtime, <span class="at">prior =</span> prior3, <span class="at">nitt =</span> <span class="dv">60000</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Unknown or uninitialised column: `family`.</code></pre>
+</div>
+</div>
+<p>Now we can simulate new data again, and plot it against our collected data.</p>
+<div class="cell" data-layout-align="center">
+<div class="sourceCode cell-code" id="cb29"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a>xsim <span class="ot">&lt;-</span> <span class="fu">simulate</span>(randomerror3)</span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(migrationtime<span class="sc">$</span>Slope, <span class="fu">I</span>(<span class="dv">1</span><span class="sc">/</span>migrationtime<span class="sc">$</span>SE))</span>
+<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a><span class="fu">points</span>(xsim, <span class="fu">I</span>(<span class="dv">1</span><span class="sc">/</span>migrationtime<span class="sc">$</span>SE), <span class="at">col =</span> <span class="st">"red"</span>) <span class="co"># here you can plot the data from both your simulated and real datasets and compare them</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="Meta-analysis-follow-along_files/figure-html/unnamed-chunk-21-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>These parameters seem to be a better fit for our data.</p>
+<p>Another trick for checking whether the parameters fit the data is to make sure your max (or min) values fit inside a histogram of your simulated distribution, like this:</p>
+<div class="cell" data-layout-align="center">
+<div class="sourceCode cell-code" id="cb30"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a>xsim <span class="ot">&lt;-</span> <span class="fu">simulate</span>(randomerror3, <span class="dv">1000</span>) <span class="co"># 1000 represents the number of simulations, and for some reason needs to be higher than the default to work in this case</span></span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a><span class="fu">hist</span>(<span class="fu">apply</span>(xsim, <span class="dv">2</span>, max), <span class="at">breaks =</span> <span class="dv">30</span>) <span class="co"># plot your simulation data</span></span>
+<span id="cb30-3"><a href="#cb30-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb30-4"><a href="#cb30-4" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">v =</span> <span class="fu">max</span>(migrationdata<span class="sc">$</span>Slope), <span class="at">col =</span> <span class="st">"red"</span>) <span class="co"># check to see whether the max value of your real data falls within this histogram.</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="Meta-analysis-follow-along_files/figure-html/unnamed-chunk-22-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Hopefully this has given you a good idea on how to get started with MCMCglmm!</p>
+</section>
+<section id="now-its-your-turn" class="level2" data-number="8">
+<h2 data-number="8" class="anchored" data-anchor-id="now-its-your-turn"><span class="header-section-number">8</span> Now it’s your turn!</h2>
+<section id="filter-the-data-by-rows-which-have-temperature-as-the-predictor." class="level3" data-number="8.1">
+<h3 data-number="8.1" class="anchored" data-anchor-id="filter-the-data-by-rows-which-have-temperature-as-the-predictor."><span class="header-section-number">8.1</span> Filter the data by rows which have temperature as the predictor.</h3>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb31"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a>migrationtemperature <span class="ot">&lt;-</span> migrationdata <span class="sc">%&gt;%</span></span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(Predictor <span class="sc">==</span> <span class="st">'temperature'</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="plot-the-data-using-a-funnel-plot." class="level3" data-number="8.2">
+<h3 data-number="8.2" class="anchored" data-anchor-id="plot-the-data-using-a-funnel-plot."><span class="header-section-number">8.2</span> Plot the data using a funnel plot.</h3>
+<div class="cell" data-layout-align="center">
+<div class="sourceCode cell-code" id="cb32"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(migrationtemperature<span class="sc">$</span>Slope, <span class="fu">I</span>(<span class="dv">1</span><span class="sc">/</span>migrationtemperature<span class="sc">$</span>SE)) <span class="co"># this makes the funnel plot of slope (rate of change in days/year) and precision (1/SE)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="Meta-analysis-follow-along_files/figure-html/unnamed-chunk-24-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="run-a-basic-random-effects-model.-save-the-posterior-mode." class="level3" data-number="8.3">
+<h3 data-number="8.3" class="anchored" data-anchor-id="run-a-basic-random-effects-model.-save-the-posterior-mode."><span class="header-section-number">8.3</span> Run a basic random effects model. Save the posterior mode.</h3>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb33"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">123</span>)</span>
+<span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a>mine_basic <span class="ot">&lt;-</span> <span class="fu">MCMCglmm</span>(Slope <span class="sc">~</span> <span class="dv">1</span>, <span class="at">random =</span> <span class="sc">~</span>Species <span class="sc">+</span> Location <span class="sc">+</span> Study, <span class="at">data =</span> migrationtemperature)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Unknown or uninitialised column: `family`.</code></pre>
+</div>
+</div>
+</section>
+<section id="plot-vcv-random-and-sol-fixed-and-check-for-autocorrelation." class="level3" data-number="8.4">
+<h3 data-number="8.4" class="anchored" data-anchor-id="plot-vcv-random-and-sol-fixed-and-check-for-autocorrelation."><span class="header-section-number">8.4</span> Plot VCV (random) and Sol (fixed) and check for autocorrelation.</h3>
+<div class="cell" data-layout-align="center">
+<div class="sourceCode cell-code" id="cb35"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(mine_basic<span class="sc">$</span>Sol)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="Meta-analysis-follow-along_files/figure-html/unnamed-chunk-26-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell" data-layout-align="center">
+<div class="sourceCode cell-code" id="cb36"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">2</span>, <span class="dv">2</span>), <span class="at">mar =</span> <span class="fu">c</span>(<span class="dv">4</span>, <span class="dv">4</span>, <span class="dv">2</span>, <span class="dv">1</span>))  <span class="co"># Creates a 2x2 grid with compact margins</span></span>
+<span id="cb36-2"><a href="#cb36-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(mine_basic<span class="sc">$</span>VCV)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="Meta-analysis-follow-along_files/figure-html/unnamed-chunk-27-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="increase-the-number-of-iterations-and-burn-in-check-your-priors." class="level3" data-number="8.5">
+<h3 data-number="8.5" class="anchored" data-anchor-id="increase-the-number-of-iterations-and-burn-in-check-your-priors."><span class="header-section-number">8.5</span> Increase the number of iterations and burn in, check your priors.</h3>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb37"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">123</span>)</span>
+<span id="cb37-2"><a href="#cb37-2" aria-hidden="true" tabindex="-1"></a>a <span class="ot">&lt;-</span> <span class="dv">1000</span></span>
+<span id="cb37-3"><a href="#cb37-3" aria-hidden="true" tabindex="-1"></a>prior1 <span class="ot">&lt;-</span> <span class="fu">list</span>(<span class="at">R =</span> <span class="fu">list</span>(<span class="at">V =</span> <span class="fu">diag</span>(<span class="dv">1</span>), <span class="at">nu =</span> <span class="fl">0.002</span>),</span>
+<span id="cb37-4"><a href="#cb37-4" aria-hidden="true" tabindex="-1"></a>               <span class="at">G =</span> <span class="fu">list</span>(</span>
+<span id="cb37-5"><a href="#cb37-5" aria-hidden="true" tabindex="-1"></a>                 <span class="at">G1 =</span> <span class="fu">list</span>(<span class="at">V =</span> <span class="fu">diag</span>(<span class="dv">1</span>), <span class="at">nu =</span> <span class="dv">1</span>, <span class="at">alpha.mu =</span> <span class="dv">0</span>, <span class="at">alpha.V =</span> <span class="fu">diag</span>(<span class="dv">1</span>)<span class="sc">*</span>a),</span>
+<span id="cb37-6"><a href="#cb37-6" aria-hidden="true" tabindex="-1"></a>                 <span class="at">G1 =</span> <span class="fu">list</span>(<span class="at">V =</span> <span class="fu">diag</span>(<span class="dv">1</span>), <span class="at">nu =</span> <span class="dv">1</span>, <span class="at">alpha.mu =</span> <span class="dv">0</span>, <span class="at">alpha.V =</span> <span class="fu">diag</span>(<span class="dv">1</span>)<span class="sc">*</span>a),</span>
+<span id="cb37-7"><a href="#cb37-7" aria-hidden="true" tabindex="-1"></a>                 <span class="at">G1 =</span> <span class="fu">list</span>(<span class="at">V =</span> <span class="fu">diag</span>(<span class="dv">1</span>), <span class="at">nu =</span> <span class="dv">1</span>, <span class="at">alpha.mu =</span> <span class="dv">0</span>, <span class="at">alpha.V =</span> <span class="fu">diag</span>(<span class="dv">1</span>)<span class="sc">*</span>a),</span>
+<span id="cb37-8"><a href="#cb37-8" aria-hidden="true" tabindex="-1"></a>                 <span class="at">G1 =</span> <span class="fu">list</span>(<span class="at">V =</span> <span class="fu">diag</span>(<span class="dv">1</span>), <span class="at">nu =</span> <span class="dv">1</span>, <span class="at">alpha.mu =</span> <span class="dv">0</span>, <span class="at">alpha.V =</span> <span class="fu">diag</span>(<span class="dv">1</span>)<span class="sc">*</span>a)</span>
+<span id="cb37-9"><a href="#cb37-9" aria-hidden="true" tabindex="-1"></a>                 )</span>
+<span id="cb37-10"><a href="#cb37-10" aria-hidden="true" tabindex="-1"></a>               )</span>
+<span id="cb37-11"><a href="#cb37-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb37-12"><a href="#cb37-12" aria-hidden="true" tabindex="-1"></a>mine_adjusted <span class="ot">&lt;-</span> <span class="fu">MCMCglmm</span>(</span>
+<span id="cb37-13"><a href="#cb37-13" aria-hidden="true" tabindex="-1"></a>  Slope <span class="sc">~</span> <span class="dv">1</span>, <span class="at">random =</span> <span class="sc">~</span> Species <span class="sc">+</span> Location <span class="sc">+</span> Study <span class="sc">+</span> <span class="fu">idh</span>(SE)<span class="sc">:</span>units,</span>
+<span id="cb37-14"><a href="#cb37-14" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> migrationtemperature, <span class="at">prior =</span> prior1, <span class="at">nitt =</span> <span class="dv">60000</span>,</span>
+<span id="cb37-15"><a href="#cb37-15" aria-hidden="true" tabindex="-1"></a>  <span class="at">burnin =</span> <span class="dv">5000</span></span>
+<span id="cb37-16"><a href="#cb37-16" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Unknown or uninitialised column: `family`.</code></pre>
+</div>
+</div>
+</section>
+<section id="do-model-checks." class="level3" data-number="8.6">
+<h3 data-number="8.6" class="anchored" data-anchor-id="do-model-checks."><span class="header-section-number">8.6</span> Do model checks.</h3>
+<ol type="1">
+<li><p>We can start by evaluating how well the algorithm has run. This involves looking at the effective sample size (ESS) in the summary, as well as plotting the sol and random effect variance (VCV) graphs.</p>
+<p>When running the model, the MCMC algorithm generates a sequence of autocorrelated samples approximating the posterior distribution, typically one per iteration (after burn-in and thinning). The ESS indicates a hypothetical number of independent samples that would have provided the same information. Higher numbers are better.</p>
+<p>The accompanying density plot should appear smooth and well-formed, indicating the MCMC has adequately characterized the posterior distribution. Later in the analysis, the importance of the parameters can be assessed by examining this posterior distribution. For instance, if the bulk of the distribution for fixed effects is away from zero, this suggests that the effect is non-zero.</p>
+<p>For the VCV plots, the trace plots should also resemble a fuzzy caterpillar as a sign of good mixing. Since the random effects quantify variance, the density plots should show distributions entirely on the positive side as variance cannot be negative. Later in the analysis, menaningful random effects would be those which distribution is not pushed up against zero.</p></li>
+</ol>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb39"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(mine_adjusted)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+ Iterations = 5001:59991
+ Thinning interval  = 10
+ Sample size  = 5500 
+
+ DIC: -1328.505 
+
+ G-structure:  ~Species
+
+        post.mean l-95% CI u-95% CI eff.samp
+Species    0.1484  0.08732   0.2122     1009
+
+               ~Location
+
+         post.mean  l-95% CI u-95% CI eff.samp
+Location    0.1799 4.208e-08   0.4851    84.98
+
+               ~Study
+
+      post.mean l-95% CI u-95% CI eff.samp
+Study    0.0873  0.01578   0.2004    139.9
+
+               ~idh(SE):units
+
+         post.mean l-95% CI u-95% CI eff.samp
+SE.units     1.304    1.129    1.462     93.9
+
+ R-structure:  ~units
+
+      post.mean  l-95% CI u-95% CI eff.samp
+units    0.0243 0.0002754  0.07154    58.97
+
+ Location effects: Slope ~ 1 
+
+            post.mean l-95% CI u-95% CI eff.samp  pMCMC    
+(Intercept)    -1.097   -1.393   -0.809    838.7 &lt;2e-04 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
+</div>
+</div>
+<div class="cell" data-layout-align="center">
+<div class="sourceCode cell-code" id="cb41"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(mine_adjusted<span class="sc">$</span>Sol)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="Meta-analysis-follow-along_files/figure-html/unnamed-chunk-30-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell" data-layout-align="center">
+<div class="sourceCode cell-code" id="cb42"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">2</span>, <span class="dv">2</span>), <span class="at">mar =</span> <span class="fu">c</span>(<span class="dv">4</span>, <span class="dv">4</span>, <span class="dv">2</span>, <span class="dv">1</span>))  <span class="co"># Creates a 2x2 grid with compact margins</span></span>
+<span id="cb42-2"><a href="#cb42-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(mine_adjusted<span class="sc">$</span>VCV)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="Meta-analysis-follow-along_files/figure-html/unnamed-chunk-31-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="Meta-analysis-follow-along_files/figure-html/unnamed-chunk-31-2.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<ol start="2" type="1">
+<li>We can simulate new data using parameter values drawn from their <strong>estimated posterior distributions</strong>, where those posterior distributions were themselves obtained via a model constructed using certain variance/co-variance structures and informed by specific <strong>priors</strong>.</li>
+</ol>
+<div class="cell" data-layout-align="center">
+<div class="sourceCode cell-code" id="cb43"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb43-1"><a href="#cb43-1" aria-hidden="true" tabindex="-1"></a>my_xsim <span class="ot">&lt;-</span> <span class="fu">simulate</span>(mine_adjusted) </span>
+<span id="cb43-2"><a href="#cb43-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb43-3"><a href="#cb43-3" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(migrationtemperature<span class="sc">$</span>Slope, <span class="fu">I</span>(<span class="dv">1</span><span class="sc">/</span>migrationtemperature<span class="sc">$</span>SE))</span>
+<span id="cb43-4"><a href="#cb43-4" aria-hidden="true" tabindex="-1"></a><span class="fu">points</span>(my_xsim, <span class="fu">I</span>(<span class="dv">1</span><span class="sc">/</span>migrationtemperature<span class="sc">$</span>SE), <span class="at">col =</span> <span class="st">"red"</span>) </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="Meta-analysis-follow-along_files/figure-html/unnamed-chunk-32-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<ol start="3" type="1">
+<li>We can also check whether the parameters fit the data by making sure the max (or min) values fit inside a histogram of the simulated distribution.</li>
+</ol>
+<div class="cell" data-layout-align="center">
+<div class="sourceCode cell-code" id="cb44"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb44-1"><a href="#cb44-1" aria-hidden="true" tabindex="-1"></a>my_xsim <span class="ot">&lt;-</span> <span class="fu">simulate</span>(mine_adjusted, <span class="dv">1000</span>) <span class="co"># 1000 represents the number of simulations, and for some reason needs to be higher than the default to work in this case</span></span>
+<span id="cb44-2"><a href="#cb44-2" aria-hidden="true" tabindex="-1"></a><span class="fu">hist</span>(<span class="fu">apply</span>(my_xsim, <span class="dv">2</span>, max), <span class="at">breaks =</span> <span class="dv">30</span>)</span>
+<span id="cb44-3"><a href="#cb44-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb44-4"><a href="#cb44-4" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">v =</span> <span class="fu">max</span>(migrationtemperature<span class="sc">$</span>Slope), <span class="at">col =</span> <span class="st">"red"</span>) <span class="co"># check to see whether the max value of your real data falls within this histogram.</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="Meta-analysis-follow-along_files/figure-html/unnamed-chunk-33-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="interpret-your-model" class="level3" data-number="8.7">
+<h3 data-number="8.7" class="anchored" data-anchor-id="interpret-your-model"><span class="header-section-number">8.7</span> Interpret your model!</h3>
+<p>The posterior mean in the model is -1.1 with a credible intervals entirely on the negative side which suggests a negative correlation between temperature and bird arrival times. The ESS is about 1000 for both the fixed effect (intercept) and for the variance of the random effect <code>Species</code>. However, the ESS is very low - between 59 and 140 - for the variance of the remaining random variables which means that these estimates are unreliable.</p>
+<p>By looking at the graphs, it looks that the trace plot of the fixed effect (intercept) does indeed resemble a fuzzy caterpillar, a sign of good mixing. The distribution also looks narrow and well formed which is also a good sign.</p>
+<p>In regards to the random effects, their trace plots show some fuzziness which at first glance could be confused with the familiar fuzzy caterpillar shape. However, upon closer examination, there are underlying patterns. Specifically, the trace plot for the <code>Species</code> variance component exhibits good local mixing, characterized by rapid, fuzzy oscillations. However, there also appear to be some slower, longer-term drifts or undulations in the central tendency of the chain across the iterations. On the other hand, the traces of <code>Location</code> and <code>Study</code> remain stuck to around zero with some periodic spikes towards higher values. This is consistent with the reported ESS. Moving onto the density distributions, both <code>Location</code> and <code>Study</code> appear very close to zero and do not form a defined bell-like shape. Instead, the density distribution of <code>Location</code> shows a dented downwards curve while Study shows a typical bell-shape that is compressed towards zero and relaxes towards positive values. On the other hand, the density distributions of <code>Species</code> and <code>SE.units</code> appear well shaped and distinctively away from zero.</p>
+<p>Based on these characteristics, the meta analysis suggests that there is a negative correlation between arrival times of migratory birds and temperature. Furthermore, there model has substantially estimated variation attributable to the <code>Species</code> random effect. This estimate is reliable due to the high ESS value. Variation coming from the remaining random effects is unreliable due to low ESS values, yet it is noteworthy to that it was estimated to be close to zero. The variation attributable to the <code>SE.units</code> variables is also substantial although unreliable due to the low ESS value. It could mean that the true sampling variance might be larger than initially assumed by <span class="math inline">\(\text{SE}^2\)</span>. That implies that the true sampling variance in all studies is likely higher than reported and therefore studies with high SE are down weighted even more.</p>
+<p>A word of caution: the low ESS calculated for some variables, and misshaped traces, suggests that the estimates for some variables in this model may not be accurate.</p>
+</section>
+<section id="after-you-read-the-next-section-you-might-want-to-include-some-fixed-effects-or-use-different-variance-structures-for-your-residual-as-well." class="level3" data-number="8.8">
+<h3 data-number="8.8" class="anchored" data-anchor-id="after-you-read-the-next-section-you-might-want-to-include-some-fixed-effects-or-use-different-variance-structures-for-your-residual-as-well."><span class="header-section-number">8.8</span> After you read the next section, you might want to include some fixed effects, or use different variance structures for your residual as well.</h3>
+<p>Coming back from reading and playing with the following section, one could:</p>
+<ol type="1">
+<li>Include fixed effects in the model. This is straightforward to implement by adding terms to the fixed part of the model.</li>
+<li>One needs to have the column <code>Response_variable</code> as a factor and adjust the structure of the prior to become a 3x3 matrix since there are three categories in that column.</li>
+</ol>
+</section>
+</section>
+<section id="sec-Extras" class="level2" data-number="9">
+<h2 data-number="9" class="anchored" data-anchor-id="sec-Extras"><span class="header-section-number">9</span> Extras: fixed effects, posterior mode (BLUPs), non-gaussian families, (co)variance structures</h2>
+<section id="fixed-effects" class="level3" data-number="9.1">
+<h3 data-number="9.1" class="anchored" data-anchor-id="fixed-effects"><span class="header-section-number">9.1</span> Fixed effects</h3>
+<p>As well as random effects, you can also fit fixed effects. <code>MCMCglmm</code> estimates the random effects just like fixed effects, but with random effects meta-analyses, it is the <strong>variance</strong> that is usually the focus of the analysts interest.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb45"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb45-1"><a href="#cb45-1" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">123</span>)</span>
+<span id="cb45-2"><a href="#cb45-2" aria-hidden="true" tabindex="-1"></a>fixedtest <span class="ot">&lt;-</span> <span class="fu">MCMCglmm</span>(Slope <span class="sc">~</span> Migration_distance <span class="sc">+</span> Continent, <span class="at">random =</span> <span class="sc">~</span>Species <span class="sc">+</span> Location <span class="sc">+</span> Study <span class="sc">+</span> <span class="fu">idh</span>(SE)<span class="sc">:</span>units, <span class="at">prior =</span> prior3, <span class="at">data =</span> migrationtime, <span class="at">nitt =</span> <span class="dv">60000</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Unknown or uninitialised column: `family`.</code></pre>
+</div>
+</div>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Note
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>I have never had to change the priors for a fixed effect, but this would be worth some research for your own projects.</p>
+</div>
+</div>
+</section>
+<section id="calculating-the-posterior-mean-of-the-random-effects-similar-to-best-linear-unbiased-predictors" class="level3" data-number="9.2">
+<h3 data-number="9.2" class="anchored" data-anchor-id="calculating-the-posterior-mean-of-the-random-effects-similar-to-best-linear-unbiased-predictors"><span class="header-section-number">9.2</span> Calculating the posterior mean of the random effects (similar to Best Linear Unbiased Predictors)</h3>
+<p>I previously mentioned that <code>MCMCglmm</code> estimates both the <em>variance</em> of a random effect and the <em>true effect size</em> for each category within it, but that it is more informative to report the variance of the random effects than it is to report each effect size. When you use <code>summary()</code>, R will therefore report the variance and credible intervals of the random effects, but not the effect sizes. However, you can save the posterior mode of these effect sizes and report them in your work. You should <strong>never</strong> do further statistical analyses on them though, and always be sure to let your reader know that this is where your prediction has come from.</p>
+</section>
+<section id="why-arent-we-calling-them-best-linear-unbiased-predictors" class="level3" data-number="9.3">
+<h3 data-number="9.3" class="anchored" data-anchor-id="why-arent-we-calling-them-best-linear-unbiased-predictors"><span class="header-section-number">9.3</span> Why aren’t we calling them Best Linear Unbiased Predictors?</h3>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Note
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p><strong>Note from Jarrod:</strong> There is no fundemental difference between (what we call) fixed and random effects in a Bayesian analysis. However, in a Frequentist anlysis there is, and that’s why they use the words estimating and predicting. The distinction is not required when using MCMCglmm. BLUPS can be interpreted as the posterior mode of the random effects conditional on (RE)ML estimates of the variances. You can of course calculate the posterior modes of the random effects in MCMCglmm, but they are not BLUPS because we haven’t conditioned on the variances but averaged over their uncertianity.</p>
+</div>
+</div>
+<p>To save the posterior mode of for each level or category in your random effect(s) we use <code>pr = TRUE</code>, which saves them in the <code>$Sol</code> part of the model output. Take a look:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb47"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb47-1"><a href="#cb47-1" aria-hidden="true" tabindex="-1"></a><span class="co"># It seem sthat we need to clean the `Study` names first:</span></span>
+<span id="cb47-2"><a href="#cb47-2" aria-hidden="true" tabindex="-1"></a>migrationtime_clean <span class="ot">&lt;-</span> migrationtime <span class="sc">%&gt;%</span> </span>
+<span id="cb47-3"><a href="#cb47-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb47-4"><a href="#cb47-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">Study =</span> <span class="fu">str_replace_all</span>(Study, <span class="st">'[$A-Za-z ]'</span>, <span class="st">' '</span>),</span>
+<span id="cb47-5"><a href="#cb47-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">Study =</span> <span class="fu">str_squish</span>(Study)</span>
+<span id="cb47-6"><a href="#cb47-6" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb47-7"><a href="#cb47-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb47-8"><a href="#cb47-8" aria-hidden="true" tabindex="-1"></a>fixedtest <span class="ot">&lt;-</span> <span class="fu">MCMCglmm</span>(</span>
+<span id="cb47-9"><a href="#cb47-9" aria-hidden="true" tabindex="-1"></a>  Slope <span class="sc">~</span> Migration_distance <span class="sc">+</span> Continent, </span>
+<span id="cb47-10"><a href="#cb47-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">random =</span> <span class="sc">~</span>Species <span class="sc">+</span> Location <span class="sc">+</span> Study <span class="sc">+</span> <span class="fu">idh</span>(SE)<span class="sc">:</span>units, </span>
+<span id="cb47-11"><a href="#cb47-11" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> migrationtime_clean, </span>
+<span id="cb47-12"><a href="#cb47-12" aria-hidden="true" tabindex="-1"></a>  <span class="at">prior =</span> prior3, </span>
+<span id="cb47-13"><a href="#cb47-13" aria-hidden="true" tabindex="-1"></a>  <span class="at">pr =</span> <span class="cn">TRUE</span>, </span>
+<span id="cb47-14"><a href="#cb47-14" aria-hidden="true" tabindex="-1"></a>  <span class="at">nitt =</span> <span class="dv">60000</span></span>
+<span id="cb47-15"><a href="#cb47-15" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Unknown or uninitialised column: `family`.</code></pre>
+</div>
+</div>
+<p>Each random effect has a posterior distribution. The BLUP is <em>like</em> the mode of this posterior distribution.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb49"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb49-1"><a href="#cb49-1" aria-hidden="true" tabindex="-1"></a>posteriormode <span class="ot">&lt;-</span> <span class="fu">apply</span>(fixedtest<span class="sc">$</span>Sol, <span class="dv">2</span>, mode)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>If we want to look at the posterior modes for Species, for example, we can choose the correct rows using the code below. This is a bit fiddly if you have lots of levels.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb50"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb50-1"><a href="#cb50-1" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(posteriormode) <span class="sc">%&gt;%</span> <span class="fu">as_tibble</span>() <span class="co"># identify which posterior modes belong to Species</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 2,316 × 1
+   value                         
+   &lt;chr&gt;                         
+ 1 (Intercept)                   
+ 2 Migration_distanceshort       
+ 3 Migration_distanceunclassified
+ 4 ContinentAntarctica           
+ 5 ContinentAsia                 
+ 6 ContinentAustralasia          
+ 7 ContinentEurope               
+ 8 ContinentNorth America        
+ 9 Species.Accipiter cooperii    
+10 Species.Accipiter nisus       
+# ℹ 2,306 more rows</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb52"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb52-1"><a href="#cb52-1" aria-hidden="true" tabindex="-1"></a>posteriormode[<span class="dv">9</span><span class="sc">:</span><span class="dv">416</span>] <span class="sc">%&gt;%</span> <span class="fu">as_tibble</span>() <span class="co"># there are a lot of species in this analysis!</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 408 × 1
+   value  
+   &lt;chr&gt;  
+ 1 numeric
+ 2 numeric
+ 3 numeric
+ 4 numeric
+ 5 numeric
+ 6 numeric
+ 7 numeric
+ 8 numeric
+ 9 numeric
+10 numeric
+# ℹ 398 more rows</code></pre>
+</div>
+</div>
+<p>This code will sort from smallest value to largest. Now you can report which species have been most or least responsive in changing their arrival date at breeding grounds.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb54"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb54-1"><a href="#cb54-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sort</span>(posteriormode[<span class="dv">9</span><span class="sc">:</span><span class="dv">416</span>]) <span class="sc">%&gt;%</span> <span class="fu">as_tibble</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 408 × 1
+   value  
+   &lt;chr&gt;  
+ 1 numeric
+ 2 numeric
+ 3 numeric
+ 4 numeric
+ 5 numeric
+ 6 numeric
+ 7 numeric
+ 8 numeric
+ 9 numeric
+10 numeric
+# ℹ 398 more rows</code></pre>
+</div>
+</div>
+</section>
+<section id="non-gaussian-families" class="level3" data-number="9.4">
+<h3 data-number="9.4" class="anchored" data-anchor-id="non-gaussian-families"><span class="header-section-number">9.4</span> Non-gaussian families</h3>
+<p>This tutorial has been based around using a Gaussian distribution. However, <code>MCMCglmm</code> can handle non-Gaussian families as well. Specify <code>family=</code> to choose the correct distribution.</p>
+</section>
+<section id="calculating-95-credible-intervals" class="level3" data-number="9.5">
+<h3 data-number="9.5" class="anchored" data-anchor-id="calculating-95-credible-intervals"><span class="header-section-number">9.5</span> Calculating 95% Credible Intervals</h3>
+<p>You may want to plot or report credible intervals from a model, without lifting the numbers straight from the summary. To do this you use <code>HPDinterval(mcmc())</code></p>
+<p>Here’s an example:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb56"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb56-1"><a href="#cb56-1" aria-hidden="true" tabindex="-1"></a><span class="fu">HPDinterval</span>(<span class="fu">mcmc</span>(fixedtest<span class="sc">$</span>Sol[,<span class="st">"(Intercept)"</span>]))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>          lower      upper
+var1 -0.3243132 0.01337306
+attr(,"Probability")
+[1] 0.95</code></pre>
+</div>
+</div>
+<p>This should look like similar values to the 95% Credible Intervals of the posterior distribution of your intercept when you look at the summary.</p>
+<p><code>HPDinterval</code> is particularly useful when you want to combine effects. Say you want to know the mean and the upper &amp; lower 95% credible intervals of the posterior distribution of a short distance migrant from Europe. You can do that like this:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb58"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb58-1"><a href="#cb58-1" aria-hidden="true" tabindex="-1"></a><span class="fu">mean</span>(<span class="fu">mcmc</span>(fixedtest<span class="sc">$</span>Sol[,<span class="st">"(Intercept)"</span>]) <span class="sc">+</span> fixedtest<span class="sc">$</span>Sol[,<span class="st">"Migration_distanceshort"</span>] <span class="sc">+</span> fixedtest<span class="sc">$</span>Sol[,<span class="st">"ContinentEurope"</span>])</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] -0.2276127</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb60"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb60-1"><a href="#cb60-1" aria-hidden="true" tabindex="-1"></a><span class="fu">HPDinterval</span>(<span class="fu">mcmc</span>(fixedtest<span class="sc">$</span>Sol[,<span class="st">"(Intercept)"</span>]) <span class="sc">+</span> fixedtest<span class="sc">$</span>Sol[,<span class="st">"Migration_distanceshort"</span>] <span class="sc">+</span> fixedtest<span class="sc">$</span>Sol[,<span class="st">"ContinentEurope"</span>])</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>          lower      upper
+var1 -0.2899531 -0.1626912
+attr(,"Probability")
+[1] 0.95</code></pre>
+</div>
+</div>
+<p>These values can then be used in plots, or reports etc.</p>
+</section>
+<section id="covariance-structures" class="level3" data-number="9.6">
+<h3 data-number="9.6" class="anchored" data-anchor-id="covariance-structures"><span class="header-section-number">9.6</span> (Co)variance structures</h3>
+<p>Until now, we have learned that for each random effect and the residual in our model, <code>MCMCglmm</code> estimates the variance within that effect, i.e.&nbsp;the variance is in a 1x1 matrix - [<em>V</em>]. However, we can <strong>restructure the variance matrix</strong> within random effects and the residual if we want.</p>
+<p>But why on earth would we want to do that? Here’s an example. In previous models, we have assumed that all measures of arrival date were the same, but actually, it has been measured in three different ways; first, mean and median dates of arrival. Peak arrival is included as a category here too, but there are no rows containing it.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb62"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb62-1"><a href="#cb62-1" aria-hidden="true" tabindex="-1"></a>migrationtimef <span class="ot">&lt;-</span> migrationtime_clean <span class="sc">%&gt;%</span> </span>
+<span id="cb62-2"><a href="#cb62-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb62-3"><a href="#cb62-3" aria-hidden="true" tabindex="-1"></a>    <span class="at">Response_variable =</span> <span class="fu">as.factor</span>(Response_variable)</span>
+<span id="cb62-4"><a href="#cb62-4" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb62-5"><a href="#cb62-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb62-6"><a href="#cb62-6" aria-hidden="true" tabindex="-1"></a><span class="fu">levels</span>(migrationtimef<span class="sc">$</span>Response_variable)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "first arrival"  "mean arrival"   "median arrival"</code></pre>
+</div>
+</div>
+<p>Our residual variance is therefore <strong>heterogeneous</strong>, and we need to take this into account in our model. We can do this by using the <code>idh():units</code> function in <code>rcov</code>.</p>
+<p>Because we want to estimate the variance separately for each of these levels, we have to change the variance structure for the residual prior. In this case, we use a 3x3 variance matrix, because there are three types of response.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb64"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb64-1"><a href="#cb64-1" aria-hidden="true" tabindex="-1"></a>prior4 <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
+<span id="cb64-2"><a href="#cb64-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">R =</span> <span class="fu">list</span>(<span class="at">V =</span> <span class="fu">diag</span>(<span class="dv">3</span>), <span class="at">nu =</span> <span class="fl">0.002</span>),</span>
+<span id="cb64-3"><a href="#cb64-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">G =</span> <span class="fu">list</span>(</span>
+<span id="cb64-4"><a href="#cb64-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">G1 =</span> <span class="fu">list</span>(<span class="at">V =</span> <span class="fu">diag</span>(<span class="dv">1</span>), <span class="at">nu =</span> <span class="dv">1</span>, <span class="at">alpha.mu =</span> <span class="dv">0</span>, <span class="at">alpha.V =</span> <span class="fu">diag</span>(<span class="dv">1</span>)<span class="sc">*</span>a),</span>
+<span id="cb64-5"><a href="#cb64-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">G1 =</span> <span class="fu">list</span>(<span class="at">V =</span> <span class="fu">diag</span>(<span class="dv">1</span>), <span class="at">nu =</span> <span class="dv">1</span>, <span class="at">alpha.mu =</span> <span class="dv">0</span>, <span class="at">alpha.V =</span> <span class="fu">diag</span>(<span class="dv">1</span>)<span class="sc">*</span>a),</span>
+<span id="cb64-6"><a href="#cb64-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">G1 =</span> <span class="fu">list</span>(<span class="at">V =</span> <span class="fu">diag</span>(<span class="dv">1</span>), <span class="at">nu =</span> <span class="dv">1</span>, <span class="at">alpha.mu =</span> <span class="dv">0</span>, <span class="at">alpha.V =</span> <span class="fu">diag</span>(<span class="dv">1</span>)<span class="sc">*</span>a),</span>
+<span id="cb64-7"><a href="#cb64-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">G1 =</span> <span class="fu">list</span>(<span class="at">V =</span> <span class="fu">diag</span>(<span class="dv">1</span>), <span class="at">nu =</span> <span class="dv">1</span>, <span class="at">alpha.mu =</span> <span class="dv">0</span>, <span class="at">alpha.V =</span> <span class="fu">diag</span>(<span class="dv">1</span>)<span class="sc">*</span>a)</span>
+<span id="cb64-8"><a href="#cb64-8" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb64-9"><a href="#cb64-9" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>If you just run <code>prior4</code> in your R console you should be able to visualise the matrix for the residual prior a bit more easily.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb65"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb65-1"><a href="#cb65-1" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">123</span>)</span>
+<span id="cb65-2"><a href="#cb65-2" aria-hidden="true" tabindex="-1"></a>fixedtest <span class="ot">&lt;-</span> <span class="fu">MCMCglmm</span>(</span>
+<span id="cb65-3"><a href="#cb65-3" aria-hidden="true" tabindex="-1"></a>  Slope <span class="sc">~</span> Migration_distance <span class="sc">+</span> Continent, </span>
+<span id="cb65-4"><a href="#cb65-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">random =</span> <span class="sc">~</span>Species <span class="sc">+</span> Location <span class="sc">+</span> Study <span class="sc">+</span> <span class="fu">idh</span>(SE)<span class="sc">:</span>units,</span>
+<span id="cb65-5"><a href="#cb65-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> migrationtime_clean, <span class="at">rcov =</span> <span class="sc">~</span><span class="fu">idh</span>(Response_variable)<span class="sc">:</span>units, <span class="at">prior =</span> prior4, <span class="at">pr =</span> <span class="cn">TRUE</span>, <span class="at">nitt =</span> <span class="dv">60000</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Unknown or uninitialised column: `family`.</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb67"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb67-1"><a href="#cb67-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(fixedtest)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+ Iterations = 3001:59991
+ Thinning interval  = 10
+ Sample size  = 5700 
+
+ DIC: -4167.622 
+
+ G-structure:  ~Species
+
+        post.mean l-95% CI u-95% CI eff.samp
+Species  0.003153 0.001744 0.004643     2539
+
+               ~Location
+
+         post.mean l-95% CI u-95% CI eff.samp
+Location  0.006035 9.41e-11  0.01929    79.28
+
+               ~Study
+
+      post.mean l-95% CI u-95% CI eff.samp
+Study  0.007533 0.001981  0.01389    351.6
+
+               ~idh(SE):units
+
+         post.mean l-95% CI u-95% CI eff.samp
+SE.units     2.315    2.081    2.548     1437
+
+ R-structure:  ~idh(Response_variable):units
+
+                                      post.mean  l-95% CI u-95% CI eff.samp
+Response_variablefirst arrival.units   0.003768 0.0017368 0.005784    566.3
+Response_variablemean arrival.units    0.001292 0.0001783 0.002867    523.6
+Response_variablemedian arrival.units  0.001855 0.0002009 0.004149   1215.4
+
+ Location effects: Slope ~ Migration_distance + Continent 
+
+                               post.mean l-95% CI u-95% CI eff.samp   pMCMC   
+(Intercept)                     -0.15383 -0.31963  0.01534     5279 0.07018 . 
+Migration_distanceshort         -0.03926 -0.06329 -0.01470     5020 0.00351 **
+Migration_distanceunclassified   0.02823 -0.02908  0.09604     5404 0.36316   
+ContinentAntarctica              0.26015 -0.03671  0.56615     5700 0.08561 . 
+ContinentAsia                    0.03326 -0.16418  0.21771     4937 0.73018   
+ContinentAustralasia            -0.10746 -0.35526  0.16172     3650 0.39263   
+ContinentEurope                 -0.03512 -0.19775  0.13572     4653 0.66667   
+ContinentNorth America           0.04893 -0.15362  0.26544     5700 0.63193   
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
+</div>
+</div>
+<p>Now we can see when we print the summary that the residual variance has now been estimated for all three measures of arrival. Success!</p>
+<p><strong>Finally</strong>, as well as using variance matrices, you can use co-variance matrices, replacing <code>idh()</code> with <code>us()</code>. In this case, you will need to update the prior for your effect. If there are three levels, you need to increase the size of your matrix to 3, for example.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb69"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb69-1"><a href="#cb69-1" aria-hidden="true" tabindex="-1"></a>G1 <span class="ot">=</span> <span class="fu">list</span>(<span class="at">V =</span> <span class="fu">diag</span>(<span class="dv">3</span>), <span class="at">nu =</span> <span class="dv">3</span>, <span class="at">alpha.mu =</span> <span class="fu">rep</span>(<span class="dv">0</span>,<span class="dv">3</span>), <span class="at">alpha.V =</span> <span class="fu">diag</span>(<span class="dv">3</span>)<span class="sc">*</span>a)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>However, I think this concept falls beyond the remit of an “introduction” to <code>MCMCglmm</code>. You can learn more about how to fit these matrices, and get some nice visualizations of what the matrices for each function look like in the “Compound Variance Structures” sectio0n of the Course Notes. Happy structuring!</p>
+</section>
+</section>
+<section id="playing-with-figures" class="level2" data-number="10">
+<h2 data-number="10" class="anchored" data-anchor-id="playing-with-figures"><span class="header-section-number">10</span> Playing with figures</h2>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Note
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>This section has nothing to do with the tutorial. I was just playing with Quarto and its document authoring features such as including and referencing figures. Turned out that it is not fully there yet so I find a workaround that needs to be implemented in a specific way so I am leaving this here for future reference.</p>
+</div>
+</div>
+<p>Below is a nicely inserted figure using Quarto’s default method. This, however, makes the figure hard to see with a dark theme. The figure is <a href="#fig-example1" class="quarto-xref">Figure&nbsp;1</a>.</p>
+<div id="fig-example1" class="quarto-float quarto-figure quarto-figure-center anchored" data-fig-align="center">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-example1-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="mermaid-test-new.svg" class="img-fluid quarto-figure quarto-figure-center figure-img">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-example1-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;1: This is a mermaid vector figure test!
+</figcaption>
+</figure>
+</div>
+<p><span id="eq-sample"><span class="math display">\[
+a = b+c * \text{hello}
+\tag{1}\]</span></span></p>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+        const codeEl = trigger.previousElementSibling.cloneNode(true);
+        for (const childEl of codeEl.children) {
+          if (isCodeAnnotation(childEl)) {
+            childEl.remove();
+          }
+        }
+        return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

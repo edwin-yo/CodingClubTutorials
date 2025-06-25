@@ -1,0 +1,416 @@
+---
+title: "CC-4-DVM-Follow-along"
+author: "Edwin Yánez"
+date: "2025-02-26"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+# Needed libraries
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+library(readr)
+library(gridExtra)
+library(stringr)
+library(vroom)
+
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Purpose
+
+This is a follow-along document reporting my engagement with Coding Club's [Beautiful and informative data visualisation](https://ourcodingclub.github.io/tutorials/datavis/index.html) tutorial. Most of the content is lifted directly from there with minor modifications and updates from my part. Not everything in the tutorial should be expected to be replicated here.
+
+## Making different plots with ggplo2
+
+The following uses data from the [Living Planet Index](https://www.livingplanetindex.org/).
+
+```{r load-dataset}
+# Load the data.
+LPI <- vroom::vroom('LPIdata_CC.csv')
+
+# After some trial and error it was found that most year columns were parsed as numeric but at least one is parsed as character each time. This inconsistency is not addressed in the tutorial (even when using `read.csv()`). The following lines address this issue.
+# Create an array of the names of the year-columns.
+year_columns <- names(LPI) %>% 
+  .[stringr::str_detect(., '\\d{4}$')]
+
+# Use the character array to force numeric type.
+LPI <- LPI %>% 
+  mutate(
+    across(all_of(year_columns), as.numeric)
+  )
+
+# Reshape from wide to long
+LPI2 <- LPI %>% 
+  pivot_longer(
+    cols = 9:53,
+    names_to = 'year',
+    values_to = 'abundance'
+  ) %>% 
+  mutate(
+    year = as.numeric(year)
+  )
+```
+
+Since this is a very large dataset, the first few graphs are focus on the *how* the population of **only one species** has changed. It can be done with any species but to ensure that the analysis matches that of the tutorial, the chosen species is *Griffon vulture / Eurasian griffon*.
+
+```{r species-pick}
+# Here a portion of the tibble is sectioned according to the species. NAs are also dropped.
+vulture <- LPI2 %>%
+  filter(`Common Name` == 'Griffon vulture / Eurasian griffon') %>% 
+  drop_na()
+```
+
+### Histograms to visualize data distribution
+```{r histograms}
+# With base R graphics ----
+vulture_hist_base <- ggplot(vulture, aes(x = abundance))+
+  geom_histogram()
+vulture_hist_base
+
+# With ggplot2: ----
+vulture_hist_gg <- vulture %>% 
+  ggplot(aes(x = abundance))+
+  geom_histogram()
+vulture_hist_gg
+
+# Beautification of the plot ----
+vulture_hist <- vulture %>% 
+  ggplot(aes(x = abundance))+
+  geom_histogram(binwidth = 250, colour = '#8b5a00', fill = '#cd8500')+
+  geom_vline(
+    aes(xintercept = mean(abundance)),
+    colour = 'red', linetype = 'dashed', linewidth = 1
+  )+
+  theme_bw()+
+  ylab('Count\n')+
+  xlab('\nGriffon vulture abundance')+
+  theme(
+    axis.text = element_text(size = 12),
+    axis.title.x = element_text(size = 14, face = 'plain'),
+    panel.grid = element_blank(),
+    plot.margin = unit(c(1,1,1,1), units = , 'cm')
+  )
+vulture_hist
+```
+
+#### Learning how to use colourpicker
+Colourpicker is installed as another library but it appears under the "Addins" tab. Here is the histogram with different colors:
+
+```{r differently-coloured-histogram}
+vulture_hist <- vulture %>% 
+  ggplot(aes(x = abundance))+
+  geom_histogram(binwidth = 250, colour = '#BF3EFF', fill = c("#00FFFF"))+
+  geom_vline(
+    aes(xintercept = mean(abundance)),
+    colour = 'red', linetype = 'dashed', linewidth = 1
+  )+
+  theme_bw()+
+  ylab('Count\n')+
+  xlab('\nGriffon vulture abundance')+
+  theme(
+    axis.text = element_text(size = 12),
+    axis.title.x = element_text(size = 14, face = 'plain'),
+    panel.grid = element_blank(),
+    plot.margin = unit(c(1,1,1,1), units = , 'cm')
+  )
+vulture_hist
+```
+
+### Scattter plot to examine population change over time
+Let's say we are interested in how the Griffon vulture populations hae changed between 1970 and 2014 in Croatia and in Italy.
+
+```{r scatterplot}
+vultureITCR <- vulture %>% 
+  filter(`Country list` %in% c('Croatia', 'Italy'))
+
+# Default base graphics ----
+plot(vultureITCR$year, vultureITCR$abundance, col = c('#1874cd', '#68228b'))
+
+# Default ggplot2 graphics ----
+vulture_scatter_bg <- vultureITCR %>% 
+  ggplot(aes(x = year, y = abundance, colour = `Country list`))+
+  geom_point()
+vulture_scatter_bg
+
+# Reworked with ggplot2 features ----
+vulture_scatter <- vultureITCR %>% 
+  ggplot(aes(x = year, y = abundance, colour = `Country list`))+
+  geom_point(size = 2)+
+  geom_smooth(method = 'lm', aes(fill = `Country list`))+
+  theme_bw()+
+  scale_fill_manual(values = c('#ee7600', '#00868b'))+
+  scale_colour_manual(
+    values = c('#ee7600', '#00868b'),
+    labels = c('Croatia', 'Italy')
+  )+
+  ylab('Griffon vulture abundance\n')+
+  xlab('\nYear')+
+  theme(
+    axis.text.x = element_text(size = 12, angle = 45, vjust = 1, hjust = 1),
+    axis.text.y = element_text(size = 12),
+    axis.title = element_text(size = 14, face = 'plain'),
+    panel.grid = element_blank(),
+    plot.margin = unit(c(1,1,1,1), units = , 'cm'),
+    legend.text = element_text(size = 12, face = 'italic'),
+    legend.title = element_blank(),
+    legend.position.inside = c(0.9, 0.9)
+  )
+vulture_scatter
+```
+
+### Boxplot to examine whether vulture abundance differs between Croatia and Italy
+```{r boxplot}
+# Plain boxplot
+vulture_boxplot_plain <- vultureITCR %>% 
+  ggplot(aes(`Country list`, abundance))+
+  geom_boxplot()
+vulture_boxplot_plain
+
+# Beautified boxplot
+vulture_boxplot <- vultureITCR %>% 
+  ggplot(aes(`Country list`, abundance))+
+  geom_boxplot(aes(fill = `Country list`))+
+  theme_bw()+
+  scale_fill_manual(values = c('#ee7600', '#00868b'))+
+  scale_colour_manual(values = c('#ee7600', '#00868b'))+
+  ylab('Griffon vulture abundance\n')+
+  xlab('\nCountry')+
+  theme(
+    axis.text = element_text(size = 12),
+    axis.title = element_text(size = 14, face = 'plain'),
+    plot.margin = unit(c(1,1,1,1), units = , 'cm'),
+    legend.position = 'none'
+  )
+vulture_boxplot
+```
+
+### Barplot to compare species richness of a few European countries
+```{r species-richness-barplot}
+richness <- LPI2 %>% 
+  filter(`Country list` %in% c('United Kingdom', 'Germany', 'France', 'Netherlands', 'Italy')) %>% 
+  group_by(`Country list`) %>% 
+  mutate(
+    richness = length(unique(`Common Name`))
+  )
+
+richness_barplot <- richness %>% 
+  ggplot(aes(x = `Country list`, y = richness))+
+  geom_bar(
+    position = position_dodge(), 
+    stat = 'identity', 
+    colour = 'black', 
+    fill = '#00868b'
+  )+
+  theme_bw()+
+  ylab('Species richness\n')+
+  xlab('Country')+
+  theme(
+    axis.text.x = element_text(size = 12, angle = 45, vjust = 1, hjust = 1),
+    axis.text.y = element_text(size = 12),
+    axis.title = element_text(size = 14, face = 'plain'),
+    #plot.margin = unit(c(1,1,1,1), units = , 'cm'),
+    panel.grid = element_blank()
+  )
+richness_barplot
+```
+
+## Using facets and creating panels
+First, a cluttered plot:
+
+```{r cluttered-plot}
+# Population change for all countries
+vulture_scatter_all <- vulture %>% 
+  ggplot(aes(x = year, y = abundance, colour = `Country list`))+
+  geom_point(size = 2)+
+  geom_smooth(method = 'lm', aes(fill = `Country list`))+
+  theme_bw()+
+  ylab('Griffon vulture abundance\n')+
+  xlab('\nYear')+
+  theme(
+    axis.text.x = element_text(size = 12, angle = 45, vjust = 1, hjust = 1),
+    axis.text.y = element_text(size = 12),
+    axis.title = element_text(size = 14, face = 'plain'),
+    panel.grid = element_blank(),
+    plot.margin = unit(c(1,1,1,1), units = , 'cm'),
+    legend.text = element_text(size = 12, face = 'italic'),
+    legend.title = element_blank(),
+    legend.position = 'right'
+  )
+vulture_scatter_all
+```
+
+Then, a faceted plot:
+```{r faceted-plot}
+vulture_scatter_facets <- 
+  ggplot(vulture, aes(x = year, y = abundance, colour = `Country list`))+
+  geom_point(size = 2)+
+  geom_smooth(method = 'lm', aes(fill = `Country list`))+
+  facet_wrap(~ `Country list`, scales = 'free_y')+   # THIS LINE CREATES THE FACETTING
+  theme_bw()+
+  ylab('Griffon vulture abundance\n')+
+  xlab('\nYear')+
+  theme(
+    axis.text.x = element_text(size = 12, angle = 45, vjust = 1, hjust = 1),
+    axis.text.y = element_text(size = 12),
+    axis.title = element_text(size = 14, face = 'plain'),
+    panel.grid = element_blank(),
+    plot.margin = unit(c(1,1,1,1), units = , 'cm'),
+    legend.text = element_text(size = 12, face = 'italic'),
+    legend.title = element_blank(),
+    legend.position = 'right'
+  )
+vulture_scatter_facets
+```
+
+Now, a panel:
+```{r panel-plot}
+# First, a plot that puts other plots together but the result is not quite intelligible: the graphs are too stretched, the legend and text are all messed up, the white margins are too big ----
+panel_plain <- grid.arrange(vulture_hist, vulture_boxplot, vulture_scatter, ncol = 1)
+
+# A new attempt fixing those issues. ----
+my_panel <- grid.arrange(
+  vulture_hist+
+    ggtitle('(a)')+
+    ylab('Count')+
+    xlab('Abundance')+
+    theme(
+      plot.margin =  unit(c(.2, .2, .2, .2), units = , 'cm')   # This line seems to make a difference.
+    ),
+  vulture_boxplot+
+    ggtitle('(b)')+
+    ylab('Abundance')+
+    xlab('Country')+
+    theme(
+      plot.margin = unit(c(0.2,0.2,0.2,0.2), units = , 'cm')
+    ),
+  vulture_scatter+
+    ggtitle('(c)')+
+    ylab('Abundance')+
+    xlab('Year')+
+    theme(
+      plot.margin = unit(c(0.2,0.2,0.2,0.2), units = , 'cm'),
+      legend.text = element_text(size = 12, face = 'italic'),
+      legend.title = element_blank(),
+      legend.position.inside = c(.85 ,.85)   # Changes the legend position to fit within the panel.
+    ),
+  ncol = 1,   # Determines how many columns there are.
+  # widths = c(2,1,1),   # Use this if these were columns instead of rows.
+  heights = c(1,1,1)   # Use this to adjust the relative sizes of rows.
+)
+```
+
+Unlike what is suggested in the tutorial, it seems that both panels end up looking the same except for the line specifying plot margins `plot.margin = unit(c(0.2,0.2,0.2,0.2), units = , 'cm')`.
+
+## Personal Challenge!
+### 1. Choose TWO species from the LPI data and **display their population trends over time**, using a scatterplot and a linear model fit.
+```{r challenge-1}
+# Plot according to instructions
+my_species <- LPI2 %>% 
+  filter(`Common Name` %in% c("Mallard / Common mallard", "Eurasian wigeon")) %>% 
+  drop_na()
+
+my_p <- my_species %>% 
+  ggplot(mapping = aes(x = year, y = abundance, colour = `Common Name`, fill = `Common Name`))+
+  geom_point(size = 1.5, alpha = .6)+
+  geom_smooth(method = 'lm')+
+  labs(
+    y = 'Abundance\n'
+  )+
+  theme_bw()+
+  theme(
+    panel.grid = element_blank(),
+    axis.text.x = element_text(size = 12),
+    axis.title.x = element_blank(),
+    axis.text.y = element_text(size = 12),
+    axis.title = element_text(size = 14),
+    legend.position = 'top'
+  )
+my_p
+
+# Plot according to tutorial example:
+my_p2 <- my_species %>% 
+  ggplot(mapping = aes(x = year, y = abundance))+
+  geom_point(aes(colour = `Country list`), size = 1.5, alpha = .6)+
+  facet_wrap(~ `Common Name`, scales = 'free_y')+
+  stat_smooth(method = 'lm', aes(fill = `Country list`, colour = `Country list`))+
+  labs(
+    y = 'Abundance\n'
+  )+
+  theme_bw()+
+  theme(
+    panel.grid = element_blank(),
+    strip.background = element_blank(),
+    strip.text = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    axis.title = element_text(size = 12),
+    legend.text = element_text(size = 12),
+    legend.title = element_text(size = 12),
+    legend.position = 'top'
+  )
+my_p2
+```
+
+### 2. Using the same two species, filter the data to include only records from FIVE countries of your choice, and **make a boxplot** to compare how the abundance of those two species varies between the five countries?
+```{r challenge-2}
+my_countries <- my_species %>% 
+  filter(`Country list` %in% c('Canada', 'France', 'Turkey', 'India', 'Spain'))
+
+my_p3 <- my_countries %>% 
+  ggplot(aes(x = `Country list`, y = abundance, colour = `Country list`, fill = `Country list`))+
+  geom_boxplot()+
+  facet_wrap(~ `Common Name`, scales = 'free_y')+
+  theme_bw()+
+  labs(
+    y = 'Abundance of species',
+    colour = 'Countries',
+    fill = 'Countries'
+  )+
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
+    axis.title.x = element_blank(),
+    axis.title.y = element_text(size = 14),
+    panel.grid = element_blank(),
+    legend.position = 'top'
+  )
+my_p3
+
+# Putting it all together in a plot
+my_panel <- grid.arrange(
+  my_p+
+    labs(
+      title = '(a) Population change over time'
+    ),
+  my_p3+
+    labs(
+      title = '(b) Population size across countries'
+    )
+)
+  
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,470 @@
+---
+title: "CC Challenge 2!"
+author: "Edwin Yánez"
+date: "2025-03-07"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(ggrepel)
+library(sf)
+library(colorspace)
+```
+
+## Purpose
+In this document I showcase my skills learned during the second course on CC. The instructions are taken as they appear on their website at [Wiz of Data Vis challenge: Native woodlands](https://ourcodingclub.github.io/course/wiz-viz-challenge/index.html). As one is encouraged to use the provided version of the data, I have also avoided including the links to the original sources here; they are still available over on the Challenge 2 page.
+
+## Data Overview
+### Native Woodland Survey of Scotland
++ `NWSS.RDS`: a shapefile of all woodland patches in Scotland. The most important variables in the dataset are:
+  + `DOM_HABITA`: the main habitat type for the polygon. We will only retain some habitats of interest.
+  + `HECTARES`: the area of a given patch
+
++ `species_structure.RDS`: a spreadsheet containing tree species information from the woodlands. The most important variables in the dataset are:
+  + `SCPTDATA_I`: a unique identifier code that will allow to match the observations to the spatial data in NWSS.RDS
+  + `SPECIES`: the name of the species recorded
+  + `ESTIMT_HA`: the estimated area, in hectares, covered by a given species at this location
+
+### National Nature Reserves
++ `SNH_national_reserves.RDS`: a shapefile containing the outlines of Scotland’s NNRs. The most important variables in the dataset are:
+  + `NAME`: The name of the reserve
+  + `SITE_HA`: The area of the site in hectares
+
+## About spatial data
+Two of the three datasets are **shapefiles**, which means that they contain geometric information that allow the data to be represented as shapes (polygons), points or lines. But don’t panic! When you import the files into R, you will see that you can preview and manipulate the data much like any other dataframe.
+
+The spatial objects have been saved using the *sf package* which allows for integration with the tidyverse: the sf functions are pipe-friendly and you can pretty much do everything to a sf object that you would do to a regular dataframe (e.g. merge with another dataset, subset to some values or conditions, etc). Remember, in the end, a spatial dataset is just like any other dataset, with extra geographic information tucked in one column!
+
+You will not have to do any complex spatial analysis for this, but the instructions will point you in the right direction when functions specific to the sf package might be needed.
+
+## Specific Tasks
+Here is a detailed list of the tasks you should achieve within this challenge. Remember that a challenge is meant to be, well, challenging, and therefore we are setting you goals but the choice of workflow and functions to achieve them is up to you! We also list the questions that will be asked in the quiz at the end to confirm your successful completion - we suggest you take note of your answers as you go.
+
+### 1. Clean the data
+You will need to clean and filter the data to the sites and woodland types of interest. *Specifically, you should*:
+
++ Restrict the NWSS observations to the following dominant habitat types:
+	+ Native pinewood
+  + Upland birchwood
+  + Upland mixed ashwood
+  + Upland oakwood
+  + Wet woodland
+  + Lowland mixed deciduous woodland
+	
++ Restrict the NNR shapefile to the **following areas**, lump the last three under the same name, and rename as indicated:
+  + The Great Trossachs Forest (rename to “Trossachs”)
+  + Glen Affric (leave as such)
+  + Cairngorms (part of the “Cairngorms” group)
+  + Mar Lodge Estate (part of the “Cairngorms” group)
+  + Abernethy (part of the “Cairngorms” group)
+
+NB: There are 6 more NNRs within the Cairngorms National Park, but these three are large ones within the core of the park, and the only ones we’ll be considering for this analysis.
+
+**HINT:** Once you have filtered both datasets to only keep the regions and habitats of interest, the best way forward is to create **one object** that combines the two: i.e. only keep the habitats of interest that are found within the regions of interest. You may need some indepent research to figure it out, but only one function from the sf package is required to achieve this. To get you started, know that all sf functions begin with “st“, and this type of spatial operation is called an _intersection…
+```{r task-1.1}
+NWSS_raw <- readRDS('data/NWSS.RDS')
+species_structure_raw <- readRDS('data/species_structure.RDS')
+SNH_national_reserves_raw <- readRDS('data/SNH_national_reserves.RDS')
+
+# Reassigning them to update the old-style crs:
+st_crs(NWSS_raw) <- st_crs(NWSS_raw)
+st_crs(SNH_national_reserves_raw) <- st_crs(SNH_national_reserves_raw)
+
+# Habitats of interest
+nwss <- NWSS_raw %>%  
+  filter(DOM_HABITA %in% c('Native pinewood', 'Upland birchwood', 'Upland mixed ashwood', 'Upland oakwood', 'Wet woodland', 'Lowland mixed deciduous woodland')) %>% 
+  mutate(
+    DOM_HABITA = fct_drop(DOM_HABITA)
+  ) %>% 
+  drop_na()
+
+# Regions of interest
+snh <- SNH_national_reserves_raw %>% 
+  filter(NAME %in% c('The Great Trossachs Forest', 'Glen Affric', 'Cairngorms', 'Mar Lodge Estate', 'Abernethy')) %>%
+  mutate(
+    NAME = case_when(
+      NAME == 'The Great Trossachs Forest' ~ 'Trossachs',
+      NAME %in% c('Mar Lodge Estate', 'Abernethy') ~ 'Cairngorms',
+      TRUE ~ NAME
+    )
+  ) %>% 
+  drop_na()
+
+combined <- st_intersection(nwss, snh)
+```
+
+### 2. Map the areas of interest
+Create a map for each of the three areas (Cairngorms, Trossachs, and Glen Affric) showing the geographical distribution of the priority habitats. **Specifically, you should:**
+
++ Create a colour palette that you will use consistently to refer to the habitat types
++ Produce a map for each region, complete with a legend. 
+
+**Be prepared to answer the question**:
+
++ What type(s) of priority habitat is (are) found in the Trossachs but not in the other two areas?
+
+  The priority habitats exclusive to the Trossachs are *Upland oakwood* and *Upland mixed ashwood*.
+
+**HINT:** Producing a map is not very different than producing any other plot. The sf package integrates almost seamlessly with ggplot2, so you can use all your favourite ways of selecting colours based on factor levels, adding text and legends, etc. The only difference is that the sf objects are called in your plot through `geom_sf`.
+```{r task-2.1, fig.align='center'}
+habitat_levels = levels(combined$DOM_HABITA)
+
+my_palette <- qualitative_hcl(
+  n = length(habitat_levels)
+) %>% 
+  setNames(habitat_levels)
+
+p <- combined %>% 
+  nest_by(NAME) %>% 
+  mutate(
+    plots = list(
+      ggplot(data = data, aes(fill = DOM_HABITA))+
+        geom_sf()+
+        scale_fill_manual(
+          values = my_palette,
+          name = 'Habitats',
+          guide = guide_legend(
+            ncol = 3,
+            byrow = TRUE,
+            title.position = 'top'
+          )
+        )+
+        labs(
+          title = paste('Map of Habitats present in', NAME)
+        )+
+        theme_bw()+
+        theme(
+          axis.text = element_text(size = 11),
+          plot.title = element_text(size = 14, hjust = 0.5, face = 'bold'),
+          plot.margin = unit(c(.5,.5,.5,.5), units = , 'cm'),
+          legend.title = element_text(face = 'bold', hjust = .5),
+          legend.position = 'bottom',
+          legend.frame = element_rect()
+        )
+    )
+  )
+p$plots
+```
+```{r task-2.2}
+# Answering the question about the priority habitats found in Trossachs but not in the other two areas:
+# Approach 1:
+# This approach is commented out because it is obscure and relies on hardcoded indices. However, I have decided to keep it as written because it provides insisght on how R works. This approach produces an identical result to approach 2.
+if(FALSE){
+temp <- rbind(p$data[[1]], p$data[[2]]) %>% tibble()
+print(
+  anti_join(tibble(p$data[[3]]), temp, join_by(DOM_HABITA)) %>% 
+    distinct(DOM_HABITA) %>% 
+    rename(
+      `Priority habitats present only in Trossachs` = DOM_HABITA
+    )
+)
+}
+
+# Aproach 2:
+other_habitats <-
+  combined %>% 
+  tibble() %>% 
+  select(DOM_HABITA, NAME) %>% 
+  filter(NAME != 'Trossachs') %>% 
+  distinct()
+  
+trossachs_habitats <-
+  combined %>% 
+  tibble() %>% 
+  select(DOM_HABITA, NAME) %>% 
+  filter(NAME == 'Trossachs') %>% 
+  distinct()
+  
+answer <- 
+  anti_join(
+    trossachs_habitats,
+    other_habitats,
+    join_by(DOM_HABITA)
+  ) %>% 
+  distinct(DOM_HABITA) %>% 
+  rename(
+    `Priority habitats present only in Trossachs` = DOM_HABITA
+  )
+print(answer)
+```
+
+### 3. Calculate the proportion of land (in %) covered by each habitat in the three areas.
+The total NNR area is found in the cell `SITE_HA`, and the habitat polygon size is contained in the cell `HECTARES`. (Note that there are more than one polygon per habitat type! Think about grouping observations first.)
+
+**Specifically, you should:**
+
++ Create a graph of your choice to represent the proportion of each habitat within the three reserves.
+Be prepared to answer the questions:
+
++ What type of graph did you create?
+
+  I first created a regular bar chart with `geom_col` (because I already have a summary table). However, then I ended up doing a *lollipop chart* because, to me, it looks better than plain bars.
+  
++ What proportion of Glen Affric is covered in pinewoods?
+
+  About 16.85% of Glen Affric is covered in Native pinewood.
+  
+
+```{r task-3.1}
+habitat_area <- combined %>%
+  st_drop_geometry() %>%
+  group_by(NAME, DOM_HABITA) %>%
+  summarise(
+    habitat_hectares = sum(HECTARES),
+    .groups = "drop"
+  )
+
+reserve_area <- combined %>%
+  st_drop_geometry() %>%
+  group_by(NAME) %>%
+  summarise(
+    total_hectares = sum(unique(SITE_HA)), 
+    .groups = "drop"
+  )
+
+coverage <- habitat_area %>% 
+  left_join(reserve_area, join_by('NAME')) %>% 
+  mutate(
+    pct = habitat_hectares * 100 / total_hectares
+  )
+print(coverage)
+```
+
+```{r task-3.2, fig.align='center', fig.width=8}
+# Traditional approach
+p <- coverage %>% 
+  nest_by(NAME) %>% 
+  mutate(
+    plots = list(
+      ggplot(data = data, aes(y = fct_reorder(DOM_HABITA, pct), x = pct, fill = DOM_HABITA))+
+        geom_col()+
+        #scale_x_continuous(limits = c(0, 20))+
+        scale_fill_manual(
+          values = my_palette,
+          name = '',
+          guide = guide_legend(
+            ncol = 3,
+            byrow = TRUE,
+            title.position = 'top'
+          )
+        )+
+        labs(
+          title = paste('Percent coverage of priority habitats in', NAME)
+        )+
+        theme_bw()+
+        theme(
+          plot.title = element_text(size = 14, face = 'bold', hjust = .5),
+          axis.text = element_text(size = 12),
+          axis.title.x = element_blank(),
+          axis.title.y = element_blank(),
+          legend.position = 'none'
+        )
+    )
+  )
+p$plots
+```
+
+```{r task-3.3, fig.width=8}
+# Fancy approach
+p <- coverage %>% 
+  nest_by(NAME) %>% 
+  mutate(
+    plots = list(
+      ggplot(data = data, aes(y = fct_reorder(DOM_HABITA, pct), x = pct, color = DOM_HABITA))+
+        geom_segment(
+          aes(
+            x = 0, xend = pct,
+            yend = DOM_HABITA,
+          ),
+          linewidth = 2
+        )+
+        geom_point(size = 7)+
+        scale_color_manual(
+          values = my_palette,
+          name = '',
+          guide = guide_legend(
+            ncol = 3,
+            byrow = TRUE,
+            title.position = 'top'
+          )
+        )+
+        labs(
+          title = paste('Percent coverage of priority habitats in', NAME)
+        )+
+        theme_bw()+
+        theme(
+          plot.title = element_text(size = 14, face = 'bold', hjust = .5),
+          axis.text = element_text(size = 12),
+          axis.title.x = element_blank(),
+          axis.title.y = element_blank(),
+          legend.position = 'none'
+        )
+    )
+  )
+p$plots
+```
+
+```{r task-3.4}
+# What proportion of Glen Affric is covered in pinewoods?
+coverage %>% filter(NAME == 'Glen Affric') %>% print()
+```
+
+### 4. Calculate the species richness and evenness of the three areas.
+**Species richness** simply corresponds to the number of different species in each area. (Tip: all the species information can be found in *species_structure.RDS.*)
+
+**Species evenness** is a value between 0 (not even at all) and 1 (perfectly even) indicating how equitably species are represented, abundance-wise (i.e., is there one very dominant species, or are all species found in similar proportions?). A way of calculating this is to divide H’, the Shannon diversity index, by the natural logarithm (ln) of species richness that you have previously calculated. The Shannon diversity index is calculated as such:
+
+$$H' = -\sum \left( p_i \cdot \ln(p_i) \right)$$
+
+where $p_i$ in our case is the proportion of species $i$ cover (`ESTIMT_HA`) relative to the cover of all species.
+
+**Specifically, you should:**
+
++ Calculate the richness, the Shannon index, and the evenness for all three sites. (Hint: some pipe chains involving our favourite dplyr functions may be useful here!)
++ Create a map that visually represents the difference in evenness among the three sites. (Think colour gradient.)
+
+**Be ready to answer the questions:**
+
++ Which area has the most species?
+
+  Trossachs have the greatest richness with 54 species.
+
++ Which area has the lowest evenness?
+  
+  Cairngorms has the lowest evenness.
+
+```{r task-4.1}
+combined2 <- combined %>% 
+  left_join(species_structure_raw, join_by(SCPTDATA_I))
+
+# Richness as the number of species in each area:
+richness <- combined2 %>% 
+  st_drop_geometry() %>% 
+  group_by(NAME) %>% 
+  summarize(
+    Richness = n_distinct(SPECIES),
+    .groups = 'drop'
+  )
+print(richness)
+```
+
+```{r task-4.2}
+# Evenness calculation
+# First, calculate p_i ----
+species_coverage <- combined2 %>% 
+  st_drop_geometry() %>% 
+  group_by(NAME, SPECIES) %>% 
+  summarize(
+    species_coverage = sum(ESTIMT_HA), # Total number of hectares covered by each species within each area.
+    .groups = 'drop'
+  ) %>% 
+  as_tibble()
+
+species_total_coverage <- combined2 %>% 
+  st_drop_geometry() %>% 
+  group_by(NAME) %>% 
+  summarise(
+    total_coverage = sum(ESTIMT_HA),   # Total area, in hectares, covered by all species in the area.
+    .groups = 'drop'
+  ) %>% 
+  as_tibble()
+
+species_percent <- species_coverage %>% 
+  left_join(
+    species_total_coverage,
+    join_by(NAME == NAME)
+  ) %>% 
+  mutate(
+    p_i = species_coverage / total_coverage
+  ) 
+print(species_percent)
+
+# Second, calculate Shannon's diversity index ----
+shannon <- species_percent %>% 
+  filter(p_i > 0) %>% 
+  group_by(NAME) %>% 
+  summarise(
+    H = - sum(p_i * log(p_i)),
+    .groups = 'drop'
+  )
+
+# Third, calculate evenness ----
+evenness_table <- shannon %>% 
+  left_join(richness, join_by(NAME)) %>% 
+  mutate(
+    evenness = H / log(Richness)
+  )
+evenness_table
+```
+
+```{r task-4.3, fig.align='center'}
+my_palette2 <- sequential_hcl(
+  n = n_distinct(evenness_table$NAME)
+) %>% 
+  set_names(unique(evenness_table$NAME))
+
+snh_combined <- snh %>%
+  group_by(NAME) %>%
+  summarise(geometry = st_union(geometry))
+
+p <- evenness_table %>% 
+  left_join(
+    snh_combined,
+    join_by(NAME)
+  ) %>% 
+  st_as_sf() %>% 
+  ggplot(aes(fill = evenness))+
+  scale_fill_gradientn(
+    colors = my_palette2,
+    name = 'Evenness'
+  )+
+  geom_sf()+
+  geom_label_repel(
+    aes(label = NAME, geometry = geometry, hjust = 1, vjust = 1),
+    stat = 'sf_coordinates',
+    force = 75
+  )+
+  #geom_sf_text(aes(label = NAME), color = "black", size = 4, fontface = "bold") +
+  labs(
+    title = 'Evenness across NNR'
+  )+
+  theme_bw()+theme(
+    plot.title = element_text(hjust = .5, face = 'bold')
+  )
+p
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

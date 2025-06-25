@@ -1,0 +1,609 @@
+---
+title: "CC Data visualisation 2 follow along"
+author: "Edwin Yánez"
+date: "2025-03-01"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(ggplot2)
+library(vroom)
+```
+
+## Purpose
+This is a follow-along document reporting my engagement with Coding Club's [Data Visualisation 2](https://ourcodingclub.github.io/tutorials/data-vis-2/index.html) tutorial. Most of the content is lifted directly from there with minor modifications and updates from my part. Not everything in the tutorial should be expected to be replicated here.
+
+This tutorial uses made-up data consisting of the abundance and height of different plant species occurring in two magic lands: Hogsmeade and Narnia.
+
+```{r read-data}
+magic_veg <- vroom::vroom('magic_veg.csv') %>% rename(rowID = ...1)
+str(magic_veg)
+```
+
+## Customise histograms in `ggplot2`
+```{r}
+# Create a summary table.
+species_counts <- magic_veg %>% 
+  group_by(land, plot) %>% 
+  summarise(
+    Species_number = n_distinct(species)
+  ) %>% 
+  ungroup()
+
+# Create a histogram but it looks odd.
+hist <- species_counts %>% 
+  ggplot(aes(x = plot))+
+  geom_histogram()
+hist
+
+# That histogram looks weird because the data is already summarised. In this case, it is needed to specify the `stat` argument.
+hist <- species_counts %>% 
+  ggplot(aes(x = plot, y = Species_number))+
+  geom_histogram(stat = 'identity')
+hist
+
+# Alternatively (and this is my preferred way), one can just use geom_col().
+col <- species_counts %>% 
+  ggplot(aes(x = plot, y = Species_number))+
+  geom_col()
+col
+```
+
+The above demonstrates how to create histograms. However, all the species from each land are grouped together. One can differentiate them by creating a stacked bar plot using the `fill` aesthetic to color code the plot.
+```{r}
+# Color coded histogram.
+hist <- species_counts %>% 
+  ggplot(aes(x = plot, y = Species_number, fill = land))+
+  geom_col()
+hist
+
+# The bars can also be made to stand sideby side with the  `position = "dodge"` argument. Or, as I prefer, `position = position_dodge()`
+hist <- species_counts %>% 
+  ggplot(aes(x = plot, y = Species_number, fill = land))+
+  geom_col(position = position_dodge())
+hist
+
+# Customizing axes.
+hist <- species_counts %>% 
+  ggplot(aes(x = plot, y = Species_number, fill = land))+
+  geom_col(position = 'dodge')+
+  scale_x_continuous(breaks = 1:6)+
+  scale_y_continuous(limits = c(0,50))
+hist
+```
+
+### Add title, subtitles, captions and axis labels
+```{r}
+hist <- species_counts %>% 
+  ggplot(aes(x = plot, y = Species_number, fill = land))+
+  geom_col(position = position_dodge())+
+  scale_x_continuous(breaks = 1:6)+
+  scale_y_continuous(limits = c(0,50))+
+  labs(
+    title = 'Species richness by plot',
+    subtitle = 'In the magical lands',
+    caption = 'Data from the Ministry of Magic',
+    x = '\nPlot number',
+    y = 'Number of species\n'
+  )
+hist
+
+# Add a theme
+hist <- species_counts %>% 
+  ggplot(aes(x = plot, y = Species_number, fill = land))+
+  geom_col(position = position_dodge())+
+  scale_x_continuous(breaks = 1:6)+
+  scale_y_continuous(limits = c(0,50))+
+  labs(
+    title = 'Species richness by plot',
+    subtitle = 'In the magical lands',
+    caption = 'Data from the Ministry of Magic',
+    x = '\nPlot number',
+    y = 'Number of species\n'
+  )+
+  theme(
+    axis.text = element_text(size = 12),
+    axis.title = element_text(size = 12, face = 'italic'),
+    plot.title = element_text(size = 12, hjust = 0.5, face = 'bold')
+  )
+hist
+```
+
+### Change the plot background
+```{r}
+hist <- species_counts %>% 
+  ggplot(aes(x = plot, y = Species_number, fill = land))+
+  geom_col(position = position_dodge())+
+  scale_x_continuous(breaks = 1:6)+
+  scale_y_continuous(limits = c(0,50))+
+  labs(
+    title = 'Species richness by plot',
+    caption = 'Data from the Ministry of Magic',
+    x = '\nPlot number',
+    y = 'Number of species\n'
+  )+
+  theme_bw()+
+  theme(
+    panel.grid = element_blank(),
+    axis.text = element_text(size = 12),
+    axis.title = element_text(size = 12, face = 'italic'),
+    plot.title = element_text(size = 12, hjust = 0.5, face = 'bold')
+  )
+hist
+```
+
+### Fix the legend and customise the colours
+The `scale...()` functions can be used to customise both the color code and the legend at once.
+
+The `scale_fill_manual(values = c("your-colour-1", "your-colour-2", ...))` function lets you decide on custom colour values for solid elements (bars, boxplots, ribbons, etc.), and its counterpart `scale_colour_manual()` works exactly the same for line elements (points in a scatter plot, regression lines, box or column outlines, etc.). You need to make sure you put in as many colours as there are factor levels in your data.
+
+Also, notice how the name of our legend is now currently “land”: the title of that column in our dataframe `species_counts`. It is not very informative and not capitalized. We can change it to “Land of Magic,” by specifying `name = "Land of Magic"` in our function `scale_fill_manual()`. In some cases, we might not want to have a title for the legend at all, which you can do by specifying `in scale_fill_manual, name = NULL`.
+```{r}
+hist <- species_counts %>% 
+  ggplot(aes(x = plot, y = Species_number, fill = land))+
+  geom_col(position = 'dodge')+
+  scale_x_continuous(breaks = 1:6)+
+  scale_y_continuous(limits = c(0, 50))+
+  scale_fill_manual(
+    values = c('rosybrown1', '#deebf7'),
+    name = 'Land of Magic'
+  )+
+  labs(
+    title = 'Species richness by plot',
+    x = '\nPlot number',
+    y = 'Number of species\n'
+  )+
+  theme_bw()+
+  theme(
+    panel.grid = element_blank(),
+    axis.text = element_text(size = 12),
+    axis.title = element_text(size = 12),
+    plot.title = element_text(size = 14),
+    plot.margin = unit(c(.5,.5,.5,.5), units = , 'cm'),
+    legend.title = element_text(face = 'bold'),
+    legend.position = 'bottom',
+    legend.box.background = element_rect(color = 'grey', linewidth = 0.3)
+  )
+hist
+```
+
+Another thing that we might sometimes want to change is the actual label of the group (i.e. the factor levels). In the following example, our dataframe has “Hogsmeade” and “Narnia” specified, which is lucky as they would reflect correctly in the legend built by `ggplot`. However, if it they had simply been listed as “group1” and “group2” in the original data file, we would want to have more informative labels. We can do that by manipulating `labels = c("xxx", "xxx")`. In the example below, we change the labels from the default (taking from the dataframe) of “Hogsmeade” and “Narnia” to “HOGSMEADE” and “NARNIA” just for demonstration purposes. **Important: Make sure you list the new label names in the same order as your factors are listed in the dataset, otherwise you risk assigning the wrong group to the values!** Use `levels(dataframe$factorname)` to see the factors in order (usually alphabetical).
+
+```{r}
+hist <- species_counts %>% 
+  ggplot(aes(x = plot, y = Species_number, fill = land))+
+  geom_col(position = position_dodge())+
+  scale_x_continuous(breaks = 1:6)+
+  scale_y_continuous(limits = c(0, 50))+
+  scale_fill_manual(
+    values = c('rosybrown1', '#deebf7'),
+    labels = c('HOGSMEADE', 'NARNIA'),
+    name = 'Land of Magic'
+  )+
+  labs(
+    title = 'Species richness by plot',
+    x = '\nPlot number',
+    y = 'Number of species\n'
+  )+
+  theme_bw()+
+  theme(
+    panel.grid = element_blank(),
+    axis.text = element_text(size = 12),
+    axis.title = element_text(size = 12),
+    plot.title = element_text(size = 14, hjust = 0.5, face = 'bold'),
+    plot.margin = unit(c(.5,.5,.5,.5), units = , 'cm'),
+    legend.title = element_text(face = 'bold'),
+    # legend.position = 'inside',
+    # legend.position.inside = c(.5, .86),
+    legend.position = 'bottom',
+    legend.box.background = element_rect(color = 'grey', linewidth = .3)
+  )
+hist
+```
+
+## Create your own colour palette
+When you have several factor levels and need to come up with a pretty, clear, and contrasting colour scheme, it is always a good idea to look online for inspiration. Some great websites we use are [Colour Brewer](http://colorbrewer2.org/) or [coolors](https://coolors.co/). Colour Brewer even allows you to specify colourblind-safe palettes, which you definitely should want!
+
+A more advanced use of colour palettes is to create one linked to your factor levels. This is great when you work on a project that will have multiple figures, and you want the colour-coding to be consistent across the board. Linking colours specifically to factor levels ensures that if a factor is dropped from a data frame, the corresponding colour will be dropped from the resulting plot, too, instead of being reassigned to the next available factor level.
+
+Here with only two magical lands, you could easily keep track of the colours, but imagine if you had 10 different lands! Let’s create a fake dataframe of values for more magical lands, and see the power of this approach.
+
+```{r}
+# Create vectors with land names and species counts
+land <- factor(c('Narnia', 'Hogsmeade', 'Westeros', 'The Shire', 'Mordor', 'Forbidden Forest', 'Oz'))
+counts <- as.numeric(c(55,48,37,62,11,39,51))
+
+# Create the new data frame from the vectors
+more_magic <- tibble(land, counts)
+
+# We'll need as many colours as there are factor levels
+n_distinct(more_magic$land)
+
+# CREATE THE COLOUR PALETTE
+old.magic.palette <- c('#698B69', '#5D478B', '#5C5C5C', '#CD6090', '#EEC900', '#5F9EA0', '#6CA6CD')
+names(old.magic.palette) <- levels(more_magic$land)
+
+# A BETTER WAY
+magic.palette <- setNames(
+  c('#698B69', '#5D478B', '#5C5C5C', '#CD6090', '#EEC900', '#5F9EA0', '#6CA6CD'),
+  levels(more_magic$land)
+)
+
+# Bar plot with all the factors
+hist <- more_magic %>% 
+  ggplot(aes(x = land, y = counts, fill = land))+
+  geom_col(position = position_dodge())+
+  scale_y_continuous(limits = c(0, 65))+
+  scale_fill_manual(
+    values = magic.palette,
+    name = 'Land of Magic'
+  )+
+  labs(
+    title = 'Species richness in magical lands',
+    x = '',
+    y = 'Number of species \n'
+  )+
+  theme_bw()+
+  theme(
+    panel.grid = element_blank(),
+    axis.text = element_text(size = 12),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.title = element_text(size = 12),
+    plot.title = element_text(size = 14, hjust = 0.5, face = 'bold'),
+    plot.margin = unit(c(.5,.5,.5,.5), units = , 'cm'),
+    legend.title = element_text(face = 'bold'),
+    legend.position = 'bottom',
+    legend.box.background = element_rect(colour = 'grey', linewidth = .3)
+  )
+hist
+
+# See how consistent the colour scheme is if you drop some factors (using filter in the first line)
+hist <- more_magic %>% 
+  filter(land %in% c('Hogsmeade', 'Oz', 'The Shire')) %>% 
+  ggplot(aes(x = land, y = counts, fill = land))+
+  geom_col(position = position_dodge())+
+  scale_y_continuous(limits = c(0, 65))+
+  scale_fill_manual(
+    values = magic.palette,
+    name = 'Land of Magic'
+  )+
+  labs(
+    title = 'Species richness in magical lands',
+    x = '',
+    y = 'Number of species \n'
+  )+
+  theme_bw()+
+  theme(
+    panel.grid = element_blank(),
+    axis.text = element_text(size = 12),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.title = element_text(size = 12),
+    plot.title = element_text(size = 14, hjust = 0.5, face = 'bold'),
+    plot.margin = unit(c(.5,.5,.5,.5), units = , 'cm'),
+    legend.title = element_text(face = 'bold'),
+    legend.position = 'bottom',
+    legend.box.background = element_rect(colour = 'grey', linewidth = .3)
+  )
+hist
+```
+
+### Shades and gradients
+So far we’ve used `scale_colour_manual()` and `scale_fill_manual()` to define custom colours for factor levels. But what if your variable is continuous rather than categorical, so that you can’t possibly assign a colour to every value? You might then want the colour scheme to go from light to dark according to the values, and `scale_colour_gradient()` (and its friend `scale_fill_gradient()`) are there for you (and might be useful for the challenge too, cough cough).
+
+You can learn [more about these functions here](https://ggplot2.tidyverse.org/reference/scale_gradient.html); basically, you just have to set your low = and high = colour values and the function will do the rest for you. We love it!
+
+## Customise boxplots in `ggplot2`
+We could also plot the data using boxplots. Boxplots sometimes look better than bar plots, as they make more efficient use of space than bars and can reflect uncertainty in nice ways.
+
+To make the boxplots, we will slightly reshape the dataset to take account of year as well. 
+
+```{r}
+# Reshape the data first.
+yearly_counts <- magic_veg %>% 
+  group_by(land, plot, year) %>% 
+  summarise(
+    Species_number = n_distinct(species)
+  ) %>% 
+  ungroup() %>% 
+  mutate(
+    plot = as.factor(plot)
+  )
+
+# Draw basic boxplot.
+boxplot <- yearly_counts %>% 
+  ggplot(aes(plot, Species_number, fill = land))+
+  geom_boxplot()
+boxplot
+
+# Now, pretty up the plot.
+boxplot <- yearly_counts %>% 
+  ggplot(aes(plot, Species_number, fill = land))+
+  geom_boxplot()+
+  scale_x_discrete(breaks = 1:6)+
+  scale_fill_manual(
+    values = c('rosybrown1', '#deebf7'),
+    #breaks = c('Hogsmeade', 'Narnia'),
+    name = 'Land of magic',
+    labels = c('Hogsmeade', 'Narnia')
+  )+
+  labs(
+    title = 'Species richness by plot',
+    x = '\nPlot number',
+    y = 'Number of species\n',
+  )+
+  theme_bw()+
+  theme(
+    panel.grid = element_blank(),
+    axis.text = element_text(size = 12),
+    axis.title = element_text(size = 12),
+    plot.title = element_text(size = 14, hjust = .5, face = 'bold'),
+    plot.margin = unit(c(.5,.5,.5,.5), units = , 'cm'),
+    legend.position = 'bottom',
+    legend.box.background = element_rect(color = 'grey', linewidth = .3)
+  )
+boxplot
+```
+
+### Box, bar, dot...?
+Bar plots are very commonly used to show differences or ranking among groups. A problem with them, especially if used without a measure of uncertainty (e.g. error bars), is that what they display is a range of values **starting from 0**. If the variable you are plotting can reasonably have values of zero, then that’s fine, but often it’s improbable. For instance, we wouldn’t imagine that our lands of magic could be completely devoid of any life form and therefore have a species richness of zero. Same holds true if you’re comparing body weight, plant height, and a great majority of ecological variables!
+
+An easy alternative is a **dot plot**, which you could have done by summarising the `species_counts` data to get a mean and standard deviation of species counts for each land. You’d then use `geom_point(aes(x = land, y = mean))` rather than `geom_histogram()`, and add your uncertainty with `geom_errorbar(aes(x = land, ymin = mean - sd, ymax = mean + sd)`.
+
+```{r}
+# Create the summarised data
+summary <- species_counts %>% 
+  group_by(land) %>% 
+  summarise(
+    mean = mean(Species_number),
+    sd = sd(Species_number)
+  )
+
+# Make a dot plot
+dot <- summary %>% 
+  ggplot(aes(x = land, y = mean, color = land))+
+  geom_errorbar(aes(ymin = mean - sd, ymax = mean + sd), width = .2)+
+  geom_point(size = 3)+
+  scale_y_continuous(limits = c(0, 50))+
+  scale_color_manual(
+    values = c('#cd5c5c', '#6ca6cd'),
+    labels = c('HOGSMEADE', 'NARNIA'),
+    name = 'Land of Magic'
+  )+
+  labs(
+    title = 'Average species richness',
+    x = '',
+    y = 'Number of species\n'
+  )+
+  theme_bw()+
+  theme(
+    #panel.grid = element_blank(),
+    axis.text = element_text(size = 12),
+    axis.title = element_text(size = 12),
+    plot.title = element_text(size = 14, hjust = 0.5, face = 'bold'),
+    plot.margin = unit(c(.5,.5,.5,.5), units = , 'cm'),
+    legend.title = element_text(face = 'bold'),
+    legend.position = 'bottom',
+    legend.box.background = element_rect(color = 'grey', size = .3)
+  )
+dot
+```
+
+## Reordeting factors
+Remember how we learnt to recode and reorder factors in our advanced data manipulation tutorial? We often want to do this so that we can plot values in a specific order.
+
+If we wanted to have Narnia come before Hogsmeade, we would first have to reorder the data in the dataframe. From this point, after reordering the data, ggplot will always plot Narnia before Hogsmeade. Also, note how we’ve changed the order of things in scale_fill_manual - above we had it as “Hogsmeade”, then “Narnia”, and now we have “Narnia” come before “Hogsmeade” to also reorder the legend.
+```{r}
+# Reordering the data
+yearly_counts <- yearly_counts %>% 
+  mutate(
+    land = factor(
+      land,
+      levels = c('Narnia', 'Hogsmeade'),
+      labels = c('Narnia', 'Hogsmeade')
+    )
+  )
+
+# Plotting the boxplot
+boxplot <- yearly_counts %>% 
+  ggplot(aes(x = plot, y = Species_number, fill = land))+
+  geom_boxplot()+
+  scale_x_discrete(breaks = 1:6)+
+  scale_fill_manual(
+    values = c('#deebf7', 'rosybrown1'),
+    #breaks = c('Narnia', 'Hogsmeade'),
+    name = 'Land of magic',
+    labels = c('Narnia', 'Hogsmeade')
+  )+
+  labs(
+    title = 'Species richness by plot',
+    x = '\nPlot number',
+    y = 'Number of species \n'
+  )+
+  theme_bw()+
+  theme(
+    panel.grid = element_blank(),
+    axis.text = element_text(size = 12),
+    axis.title = element_text(size = 12),
+    plot.title = element_text(size = 14, hjust = .5, face = 'bold'),
+    plot.margin = unit(c(.5,.5,.5,.5), units = , 'cm'),
+    legend.position = 'bottom',
+    legend.box.background = element_rect(color = 'grey', linewidth = .3)
+  )
+boxplot
+```
+
+If we wanted to reorder the y axis of plot numbers, such that the boxplot for plot 6 comes before 1, then 2, 3, 4, 5, we can use the same principle. Again, from this point on, ggplot will always plot “6” before the rest.
+
+```{r}
+# Reordering the data
+yearly_counts <- yearly_counts %>% 
+  mutate(
+    plot = factor(
+      plot,
+      levels = c('6', '1', '2', '3', '4', '5'),
+      labels = c('6', '1', '2', '3', '4', '5')
+    )
+  )
+
+# Plotting the boxplot
+boxplot2 <- yearly_counts %>% 
+  ggplot(aes(x = plot, y = Species_number, fill = land))+
+  geom_boxplot()+
+  scale_x_discrete(breaks = 1:6)+
+  scale_fill_manual(
+    values = c('#deebf7', 'rosybrown1'),
+    breaks = c('Narnia', 'Hogsmeade'),
+    name = 'Land of magic',
+    labels = c('Narnia', 'Hogsmeade')
+  )+
+  labs(
+    title = 'Species richness by plot',
+    x = '\nPlot number',
+    y = 'Number of species\n'
+  )+
+  theme_bw()+
+  theme(
+    panel.grid = element_blank(),
+    axis.text = element_text(size = 12),
+    axis.title = element_text(size = 12),
+    plot.title = element_text(size = 14, hjust = .5, face = 'bold'),
+    plot.margin = unit(c(.5,.5,.5,.5), units = , 'cm'),
+    legend.position = 'bottom',
+    legend.box.background = element_rect(color = 'grey', linewidth = .3)
+  )
+boxplot2
+```
+
+## Plot regression lines
+We are now going to look at another aspect of the data: the plant heights, and how they might have changed over time. First, we need to do a little bit of data manipulation to extract just the heights:
+```{r}
+heights <- magic_veg %>% 
+  filter(!is.na(height)) %>% 
+  group_by(year, land, plot, id) %>% 
+  summarise(
+    Max_Height = max(height)
+  ) %>% 
+  ungroup() %>% 
+  group_by(year, land, plot) %>% 
+  summarise(height = mean(Max_Height))
+```
+
+We can view this as a basic scatterplot in ggplot2:
+```{r}
+basic_mm_scatter <- heights %>% 
+  ggplot(aes(year, height, color = land))+
+  geom_point()+
+  theme_bw()
+basic_mm_scatter
+```
+
+We can see pretty clear trends over time, and so we can try to plot a simple straight line through this using `stat_smooth` in `ggplot2`, by specifying a linear model (lm) method.
+```{r}
+basic_mm_scatter_lin <- heights %>% 
+  ggplot(aes(year, height, color = land))+
+  geom_point()+
+  theme_bw()+
+  stat_smooth(method = 'lm')
+basic_mm_scatter_lin
+
+basic_mm_scatter_lin <- heights %>% 
+  ggplot(aes(year, height, color = land))+
+  geom_point()+
+  theme_bw()+
+  geom_smooth(method = 'lm')
+basic_mm_scatter_lin
+```
+
+However, perhaps this isn’t what we really want, because you can see the relationship isn’t linear. An alternative would be to use a different smoothing equation. Let’s try a quadratic fit - something slightly more complicated to produce than the standard fits provided by R. Thankfully, `ggplot2` lets us customise to pretty much any type of fit we want, as we can add in an equation to tell it what to plot. There are also several different base fits available. You can check out some [here](https://stats.oarc.ucla.edu/r/faq/how-can-i-explore-different-smooths-in-ggplot2/).
+```{r}
+# Method suggested in the tutorial.
+improved_mm_scat <- heights %>% 
+  ggplot(aes(year, height, color = land))+
+  geom_point()+
+  theme_bw()+
+  geom_smooth(method = 'lm', formula = y ~ x + I(x^2))
+improved_mm_scat
+
+# This also works, and it is more understandable to me.
+improved_mm_scat <- heights %>% 
+  ggplot(aes(year, height, color = land))+
+  geom_point()+
+  theme_bw()+
+  geom_smooth(method = 'lm', formula = y ~ poly(x, 2))
+improved_mm_scat
+```
+
+## Creating your own gggplot theme
+```{r}
+theme_coding <- function(){
+  theme_bw()+
+    theme(
+      axis.text.x = element_text(size = 12, angle = 45, vjust = 1, hjust = 1),
+      axis.text.y = element_text(size = 12),
+      axis.title = element_text(size = 14),
+      panel.grid = element_blank(),
+      plot.margin = unit(c(0.5, 0.5, 0.5, 0.5), units = , "cm"),
+      plot.title = element_text(size = 20, vjust = 1, hjust = 0.5),
+      legend.text = element_text(size = 12, face = "italic"),
+      legend.title = element_blank()
+    )
+}
+```
+
+## Challenge!
+If you are keen for more practice, try this challenge! We’ll give you percentage of species that are endemic for our extended range of magical lands, and you will have to plot the **species richness** as a bar plot, coloured not by land this time, but with a shade representing the **% of endemism**. ( Hint: we mention this in one of our info boxes.)
+
+You will need to append the endemism values to the `more_magic` data frame:
+```{r}
+# Add % of endemic species to the data frame
+more_magic <- more_magic %>% 
+  mutate(
+    endemic = c(.54, .32, .66, .8, .14, .24, .39)
+  )
+```
+
+And you’re all set to go! For an additional challenge, try ordering the bars so that they range from lowest to highest percentage of endemism. ( Hint: you might want to check the help on the reorder() function - it can even be used on the fly in the ggplot code!)
+
+```{r}
+# Plot species richness as a barplot
+p <- more_magic %>% 
+  ggplot(aes(x = land, y = counts, fill = endemic))+
+  geom_col()+
+  scale_fill_gradient(low = 'cyan', high = 'yellow', name = 'Endemism % \n')+
+  labs(
+    x = 'Magic Land',
+    y = 'Richness',
+    title = 'Species richness in Fantasy Lands',
+    subtitle = 'Understanding tree species richness in Magic lands.',
+    caption = 'Very serious and important data obtained from the Ministry of Magic'
+  )+
+  theme_coding()
+p
+
+# Let's now produce a graph with rearranged bars from lowest to highest.
+p <- more_magic %>% 
+  ggplot(aes(x = reorder(land, endemic), y = counts, fill = endemic))+
+  geom_col()+
+  scale_fill_gradient(low = 'cyan', high = 'yellow', name = 'Endemism % \n')+
+  labs(
+    x = 'Magic Land',
+    y = 'Richness',
+    title = 'Species richness in Fantasy Lands',
+    subtitle = 'Understanding tree species richness in Magic lands.',
+    caption = 'Very serious and important data obtained from the Ministry of Magic'
+  )+
+  theme_coding()
+p
+
+```
+
+
+
+
+
+
+
+
+

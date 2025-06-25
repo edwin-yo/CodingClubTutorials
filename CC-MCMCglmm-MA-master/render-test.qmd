@@ -1,0 +1,47 @@
+---
+title: "Render test"
+format: pdf
+---
+
+This is the first figure in the document:
+
+```{mermaid}
+%%| fig-width: 5
+%%| label: fig-simple-1
+%%| fig-cap: "This is a simple mermaid graph."
+flowchart LR
+  A[Hard edge] --> B(Round edge)
+  B --> C{Decision}
+```
+
+
+This is another figure in the document:
+```{mermaid}
+%%| fig-width: 5
+%%| label: fig-simple-2
+%%| fig-cap: "This is the same mermaid graph."
+flowchart LR
+  A[Hard edge] --> B(Round edge)
+  B --> C{Decision}
+  C --> D[Result one]
+  C --> E[Result two]
+```
+
+```{dot}
+graph G {
+  layout=neato
+  run -- intr;
+  intr -- runbl;
+  runbl -- run;
+  run -- kernel;
+  kernel -- zombie;
+  kernel -- sleep;
+  kernel -- runmem;
+  sleep -- swap;
+  swap -- runswap;
+  runswap -- new;
+  runswap -- runmem;
+  new -- runmem;
+  sleep -- runmem;
+}
+```

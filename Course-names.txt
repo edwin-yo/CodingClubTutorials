@@ -1,0 +1,17 @@
+This file contains the names for the tutorials listed on the R Course from Our Coding Club.
+
+Part 3:
++ Efficient data manipulation: Streamline your code
+"CC-data-manip-2-master"
++ Intro to functional programming: loops & custom functions
+"CC-5-fun-and-loop-master"
++ Intro to model design: pick the right model for your questions
+"CC-model-design-master"
++ Ordination: finding patterns in data
+"CC-Introduction-to-ordination"
++ Intro to mixed-effects linear models
+"CC-Linear-mixed-models-master"
++ Intro to Bayesian inference with MCMCglmm
+"CC-MCMCglmm-MA-master"
++ Generalised mixed-effects models in Stan
+"CC-Stan-2-master"

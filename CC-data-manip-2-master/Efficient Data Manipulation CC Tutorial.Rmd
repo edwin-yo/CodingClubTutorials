@@ -1,0 +1,310 @@
+---
+title: "Efficient Data Manipulation CC Tutorial"
+author: "Edwin Yánez"
+date: "2025-02-28"
+output: 
+  html_document:
+    toc: TRUE
+    toc_float:
+      collapsed: false
+    toc_depth: 4
+---
+
+```{r setup, message=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(ggplot2)
+library(vroom)
+```
+
+## Purpose
+This is a follow-along document reporting my engagement with Coding Club's [Efficient data manipulation](https://ourcodingclub.github.io/tutorials/data-manip-efficient/index.html) tutorial. Most of the content is lifted directly from there with minor modifications and updates from my part. Not everything in the tutorial should be expected to be replicated here.
+
+## Introduction to Pipes
+```{r pipe-demonstration}
+# Load data
+trees <- vroom::vroom('trees.csv')
+trees
+
+trees <- trees %>% 
+  mutate(
+    Height = factor(Height)
+  )
+
+# Count the number of trees for each species
+trees.grouped <- group_by(trees, CommonName)
+trees.summary <- summarise(trees.grouped, count = length(CommonName))
+trees.summary_no_pipe <- tally(trees.grouped)
+
+# Using a pipe instead
+trees.summary <- trees %>% 
+  group_by(CommonName) %>% 
+  tally()
+```
+
+```{r pipe-example}
+# Subsetting the data frame to only three species, and counting the number of trees for each species, but also breaking them down by age group
+trees.subset <- trees %>% 
+  filter(CommonName %in% c('Common Ash', 'Rowan', 'Scots Pine')) %>% 
+  group_by(CommonName, AgeGroup) %>% 
+  tally()
+```
+
+## More functions of `dplyr`
+### `summarise_all()` - quickly generate a summary dataframe
+
+```{r}
+# As given in the tutorial
+summ.all <- summarise_all(trees, mean)
+
+# Most up to date best practice
+sum_all <- summarise(trees, across(everything(), mean))
+```
+
+### `case_when()` - a favourite for re-classifying values or factors
+```{r}
+# First, the ifelse() function
+vector <- c(4, 13, 15, 6)
+ifelse(vector < 10, 'A', 'B')
+
+# Now the function case_when() that allows for more than two outcomes
+vector2 <- c('What am I?', 'A', 'B', 'C', 'D')
+case_when(
+  vector2 == 'What am I?' ~ 'I am the walrus',
+  vector2 %in% c('A', 'B') ~ 'goo',
+  vector2 == 'C' ~ 'ga',
+  vector2 == 'D' ~ 'joob'
+)
+```
+
+## Changing factor levels or create categorical variables
+The use of `mutate()` together with `case_when()` is a great way to change the names of factor levels, or create a new variable based on existing ones. We see from the `LatinName` columns that there are many tree species belonging to some genera, like birches (Betula), or willows (Salix), for example. We may want to create a `Genus` column using `mutate()` that will hold that information.
+
+We will do this using a character string search with the `grepl` function, which looks for patterns in the data, and specify what to return for each genus. Before we do that, we may want the full list of species occuring in the data!
+
+```{r}
+unique(trees$LatinName)   # Shows all the species names
+
+# Create a new column with the tree genera
+trees.genus <- trees %>% 
+  mutate(
+    Genus = case_when(   # creates the genus column and specifies conditions
+      grepl('Acer', LatinName) ~ 'Acer',
+      grepl('Fraxinus', LatinName) ~ 'Fraxinus',
+      grepl("Sorbus", LatinName) ~ "Sorbus",
+      grepl("Betula", LatinName) ~ "Betula",
+      grepl("Populus", LatinName) ~ "Populus",
+      grepl("Laburnum", LatinName) ~ "Laburnum",
+      grepl("Aesculus", LatinName) ~ "Aesculus",
+      grepl("Fagus", LatinName) ~ "Fagus",
+      grepl("Prunus", LatinName) ~ "Prunus",
+      grepl("Pinus", LatinName) ~ "Pinus",
+      grepl("Sambucus", LatinName) ~ "Sambucus",
+      grepl("Crataegus", LatinName) ~ "Crataegus",
+      grepl("Ilex", LatinName) ~ "Ilex",
+      grepl("Quercus", LatinName) ~ "Quercus",
+      grepl("Larix", LatinName) ~ "Larix",
+      grepl("Salix", LatinName) ~ "Salix",
+      grepl("Alnus", LatinName) ~ "Alnus"
+    )
+  )
+```
+
+### Bonus function
+In our specific case, we could have achieved the same result much quicker. The genus is always the first word of the `LatinName` column, and always separated from the next word by a space. We could use the `separate()` function from the `tidyr` package to split the column into several new columns filled with the words making up the species names, and keep only the first one.
+
+```{r}
+trees.genus.2 <- trees %>% 
+  tidyr::separate(LatinName, c('Genus', 'Species'), sep = ' ', remove = FALSE) %>% 
+  dplyr::select(-Species)
+```
+
+Sometimes you have to be typing more, so here is another example of how we can reclassify a factor. The `Height` factor has 5 levels representing brackets of tree heights, but let’s say three categories would be enough for our purposes. We create a new height category variable `Height.cat`:
+
+```{r}
+trees.genus <- trees.genus %>%   # Overwriting the data frame
+  mutate(
+    Height.cat = factor(    #creating the new column
+        case_when(
+          Height %in% c('Up to 5 meters', '5 to 10 meters') ~ 'Short',
+          Height %in% c('10 to 15 meters', '15 to 20 meters') ~ 'Medium',
+          Height == '20 to 25 meters' ~ 'Tall'
+        )
+    )
+  )
+```
+
+### Reordering factors levels
+We’ve seen how we can change the names of a factor’s levels, but what if you want to change the order in which they display? R will always show them in alphabetical order, which is not very handy if you want them to appear in a more logical order.
+
+For instance, if we plot the number of trees in each of our new height categories, we may want the bars to read, from left to right: ‘Short’, ‘Medium’, ‘Tall’. However, by default, R will order them ‘Medium’, ‘Short’, ‘Tall’.
+
+To fix this, you can specify the order explicitly, and even add labels if you want to change the names of the factor levels. Here, we put them in all capitals to illustrate.
+
+```{r}
+levels(trees.genus$Height.cat)   # Shows the different factor levels in their default order
+
+trees.genus$Height.cat <- factor(
+  trees.genus$Height.cat,
+  levels = c('Short', 'Medium', 'Tall'),   # whichever order you choose will be reflected in plots etc
+  labels = c('SHORT', 'MEDIUM', 'TALL')   # make sure you match the new names to the original levels
+)
+levels(trees.genus$Height.cat)   # a new order and new names for the levels
+```
+
+## Advanced piping
+```{r}
+# Subset tibble to fewer genera
+trees.five <- trees.genus %>% 
+  filter(Genus %in% c('Acer', 'Fraxinus', 'Salix', 'Aesculus', 'Pinus'))
+
+# Map all the trees
+map.all <- ggplot(trees.five)+
+  geom_point(aes(x = Easting, y = Northing, size = Height.cat, colour = Genus), alpha = 0.5)+
+  theme_bw()+
+  theme(
+    panel.grid = element_blank(),
+    axis.text = element_text(size = 12),
+    legend.text = element_text(size = 12)
+  )
+map.all
+```
+
+Now, let’s say we want to save a separate map for each genus (so 5 maps in total). You could filter the data frame five times for each individual genus, and copy and paste the plotting code five times too, but imagine we kept all 17 genera! This is where pipes and dplyr come to the rescue again. (If you’re savvy with `ggplot2`, you’ll know that facetting is often a better option, but sometimes you do want to save things as separate files.) The `do()` function allows us to use pretty much any R function within a pipe chain, provided that we supply the data as `data = .` where the function requires it.
+
+```{r}
+# Plotting a map for each genus. This method however, has been deprecated.
+tree.plots.old <-
+  trees.five %>% 
+  group_by(Genus) %>% 
+  do(
+    plots =
+      ggplot(data = .)+
+      geom_point(aes(x = Easting, y = Northing, size = Height.cat), alpha = 0.5)+
+      labs(title = paste('Map of', .$Genus, 'at Craigmillar Castle', sep = ' '))+
+      theme_bw()+
+      theme(
+        panel.grid = element_blank(),
+        axis.text = element_text(size = 14),
+        legend.text = element_text(size = 12),
+        plot.title = element_text(hjust = 0.5),
+        legend.position = 'bottom'
+      )
+  )
+tree.plots.old$plots
+
+# This is a most up to date approach:
+tree.plots <- trees.five %>% 
+  nest_by(Genus) %>% 
+  mutate(plots = list(
+    ggplot(data = data) +
+      geom_point(aes(x = Easting, y = Northing, size = Height.cat), alpha = 0.5) +
+      labs(title = paste("Map of", Genus, "at Craigmillar Castle")) +
+      theme_bw() +
+      theme(
+        panel.grid = element_blank(),
+        axis.text = element_text(size = 14),
+        legend.text = element_text(size = 12),
+        plot.title = element_text(hjust = 0.5),
+        legend.position = "bottom"
+      )
+  )) %>% 
+  ungroup()
+tree.plots$plots
+```
+
+## Challenge!
+The Craigmillar Castle team would like a summary of the different species found within its grounds, but broken down in four quadrants (NE, NW, SE, SW). You can start from the trees.genus object created earlier.
+
+### Can you calculate the species richness (e.g. the number of different species) in each quadrant?
+```{r}
+# Let's first establish the points defining the quadrants:
+east.most <- max(trees.genus$Easting)
+west.most <- min(trees.genus$Easting)
+we.midpoint <- round((east.most + west.most)/2)
+north.most <- max(trees.genus$Northing)
+south.most <- min(trees.genus$Northing)
+sn.midpoint <- round((north.most + south.most)/2)
+
+quadrants <- trees.genus %>% 
+  mutate(
+    Quadrant = case_when(
+      (Easting > we.midpoint) & (Northing >= sn.midpoint) ~ 'First quadrant',
+      (Easting <= we.midpoint) & (Northing > sn.midpoint) ~ 'Second quadrant',
+      (Easting < we.midpoint) & (Northing <= sn.midpoint) ~ 'Third quadrant',
+      (Easting >= we.midpoint) & (Northing < sn.midpoint) ~ 'Fourth quadrant',
+      TRUE ~ "Nothing"
+    )
+  ) 
+
+richness <- quadrants %>%
+  group_by(Quadrant) %>% 
+  summarise(
+    `Species richness` = n_distinct(CommonName)
+  ) %>% 
+  ungroup()
+richness
+```
+
+### They would also like to know how abundant the genus Acer is (as a % of the total number of trees) in each quadrant.
+
+```{r}
+abundance.Acer <- quadrants %>% 
+  group_by(Quadrant) %>% 
+  summarise(
+    total = n(),
+    Acer_count = sum(Genus == 'Acer'),
+    Percentage = Acer_count * 100 / total
+  )
+abundance.Acer
+```
+
+### Finally, they would like, *for each quadrant separately*, a bar plot showing counts of *Acer trees* in the different age classes, ordered so they read from Young (lumping together juvenile and semi-mature trees), Middle Aged, and Mature.
+```{r}
+# Plots!
+c.plots <- quadrants %>% 
+  filter(Genus == 'Acer') %>% 
+  mutate(
+    AgeGroup.a = factor(
+      case_when(
+        AgeGroup %in% c('Juvenile', 'Semi-mature') ~ 'Young',
+        TRUE ~ AgeGroup
+      ),
+      levels = c('Young', 'Middle Aged', 'Mature')
+    )
+  ) %>% 
+  nest_by(Quadrant) %>% 
+  mutate(
+    plots = list(
+      ggplot(data = data, mapping = aes(x = AgeGroup.a))+
+        geom_bar()+
+        labs(
+          x = 'Age Group',
+          y = 'Count of Acer trees',
+          title = paste('Count of Acer trees in the', Quadrant)
+        )+
+        theme_bw()+
+        theme(
+          panel.grid = element_blank()
+        )
+    )
+  )
+c.plots$plots
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
