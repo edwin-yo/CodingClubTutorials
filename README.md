@@ -7,5 +7,3 @@ This repository contains my solutions working on the tutorials from the **Coding
 ## Planned Content
 - **Complete** the tutorials.
 - Set up a personal website.
-
-[X] Stuff
