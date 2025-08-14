@@ -1,3 +1,6 @@
+# Directory file
+*.directory
+
 # History files
 *.Rhistory
 *.Rapp.history
